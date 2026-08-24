@@ -130,21 +130,6 @@ const employeeSchema = new mongoose.Schema(
         enum: ['full_time', 'part_time', 'fixed_term']
     },
 
-    dateOfJoining: {
-      type: Date,
-      required: true
-    },
-
-    probationEndDate: {
-      type: Date
-    },
-
-    employmentType: {
-      type: String,
-      enum: ["full-time", "part-time", "fixed-term"],
-      required: true
-    },
-
     status: {
         type: String,
         required: true,
@@ -153,8 +138,8 @@ const employeeSchema = new mongoose.Schema(
     },
     date_of_leaving: {
         type: Date,
-        validator: {
-            validate: function(v){
+        validate: {
+            validator: function(v){
                 return this.status !== 'left' || v != null
             },
             message: 'date_of_leaving is required once status is "left".'
