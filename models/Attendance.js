@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const attendanceSchema = new mongoose.Schema(
   {
-    employeeID: {
+    employee_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true,
@@ -18,77 +18,84 @@ const attendanceSchema = new mongoose.Schema(
       enum: [
         "present",
         "absent",
-        "half-day",
-        "on-leave",
+        "half_day",
+        "on_leave",
         "holiday",
-        "weekly-off",
+        "weekly_off",
       ],
       required: true,
     },
 
-    shiftTypeID: {
+    shift_type_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ShiftType",
     },
 
-    inTime: {
+    in_time: {
       type: Date,
     },
 
-    outTime: {
+    out_time: {
       type: Date,
     },
 
-    workedHours: {
+    worked_hours: {
       type: Number,
       default: 0,
     },
 
-    isLateEntry: {
+    is_late_entry: {
       type: Boolean,
       default: false,
     },
 
-    isEarlyExit: {
+    is_early_exit: {
       type: Boolean,
       default: false,
     },
 
-    isIncomplete: {
+    is_incomplete: {
       type: Boolean,
       default: false,
     },
 
-    overtimeHours: {
+    overtime_hours: {
       type: Number,
       default: 0,
       min: 0,
     },
 
-    overtimeApproved: {
+    overtime_approved: {
       type: Boolean,
       default: false,
     },
 
-    leaveRequestID: {
+    leave_request_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "LeaveRequest",
       default: null,
     },
 
-    isCorrected: {
+    is_corrected: {
       type: Boolean,
       default: false,
     },
 
-    correctedBy: {
+    corrected_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
 
-    correctionReason: {
+    correction_reason: {
       type: String,
+      trim: true,
+      validate: {
+        validator: function(v){
+          return !this.is_corrected || (v != null && v.trim() !== '')
+        },
+        message: 'correction_reason is required when attendance is corrected.'
+      }
     },
 
     locked: {
@@ -101,7 +108,7 @@ const attendanceSchema = new mongoose.Schema(
   }
 );
 
-
+attendanceSchema.index({ employee_id: 1, date: 1}, {unique: true})
 
 const Attendance = mongoose.model(
   "Attendance",
