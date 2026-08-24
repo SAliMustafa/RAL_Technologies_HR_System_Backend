@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const checkinSchema = new mongoose.Schema(
   {
-    employeeID: {
+    employee_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true
@@ -13,7 +13,7 @@ const checkinSchema = new mongoose.Schema(
       required: true
     },
 
-    logType: {
+    log_type: {
       type: String,
       enum: ["IN", "OUT"],
       required: true
@@ -21,11 +21,11 @@ const checkinSchema = new mongoose.Schema(
 
     source: {
       type: String,
-      enum: ["mobile-app", "web", "biometric-device", "hr-entry"],
+      enum: ["mobile_app", "web", "biometric_device", "hr_entry"],
       required: true
     },
 
-    deviceID: {
+    device_id: {
       type: String
     },
 
@@ -37,7 +37,7 @@ const checkinSchema = new mongoose.Schema(
       type: Number
     },
 
-    attendanceID: {
+    attendance_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Attendance"
     }
