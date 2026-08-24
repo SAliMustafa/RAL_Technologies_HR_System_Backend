@@ -2,77 +2,83 @@ const mongoose = require("mongoose");
 
 const shiftTypeSchema = new mongoose.Schema(
   {
-    shiftName: {
+    shift_name: {
       type: String,
-      required: true
+      required: true,
+      default: 'General',
+      trim: true
     },
 
-    startTime: {
+    start_time: {
       type: String,
-      required: true
+      required: true,
+      default: '08:00'
     },
 
-    endTime: {
+    end_time: {
       type: String,
-      required: true
+      required: true,
+      default: '17:00'
+
     },
 
-    breakMinutes: {
+    break_minutes: {
       type: Number,
       default: 60
     },
 
-    workingDays: {
+    working_days: {
       type: [String],
-      required: true
+      required: true,
+      default: ["Sun", "Mon", "Tue", "Wed", "Thu"]
     },
 
-    checkinAllowedMinutesBefore: {
+    checkin_allowed_minutes_before: {
       type: Number,
       default: 60
     },
 
-    lateGraceMinutes: {
+    late_grace_minutes: {
       type: Number,
       default: 15
     },
 
-    earlyExitGraceMinutes: {
+    early_exit_grace_minutes: {
       type: Number,
       default: 15
     },
 
-    checkoutAllowedMinutesAfter: {
+    checkout_allowed_minutes_after: {
       type: Number,
       default: 60
     },
 
-    halfDayHoursThreshold: {
+    half_day_hours_threshold: {
       type: Number,
       default: 4
     },
 
-    absentHoursThreshold: {
+    absent_hours_threshold: {
       type: Number,
       default: 2
     },
 
-    markLateEntry: {
+    mark_late_entry: {
       type: Boolean,
       default: true
     },
 
-    markEarlyExit: {
+    mark_early_exit: {
       type: Boolean,
       default: true
     },
 
-    allowOvertime: {
+    allow_overtime: {
       type: Boolean,
       default: true
     },
 
-    holidayListID: {
+    holiday_list_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "HolidayList",
       required: true
