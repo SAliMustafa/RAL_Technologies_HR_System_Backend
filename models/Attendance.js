@@ -13,38 +13,87 @@ const attendanceSchema = new mongoose.Schema(
       required: true,
     },
 
-    clockIn: {
-      type: Date,
-      default: null,
-    },
-
-    clockOut: {
-      type: Date,
-      default: null,
-    },
-
-    attendanceStatus: {
+    status: {
       type: String,
       enum: [
         "present",
-        "late",
         "absent",
-        "missing",
-        "leave",
+        "half-day",
+        "on-leave",
+        "holiday",
+        "weekly-off",
       ],
-      default: "present",
+      required: true,
     },
 
-    approvalStatus: {
-      type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
-    },
-
-    approvedBy: {
+    shiftTypeID: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee",
+      ref: "ShiftType",
+    },
+
+    inTime: {
+      type: Date,
+    },
+
+    outTime: {
+      type: Date,
+    },
+
+    workedHours: {
+      type: Number,
+      default: 0,
+    },
+
+    isLateEntry: {
+      type: Boolean,
+      default: false,
+    },
+
+    isEarlyExit: {
+      type: Boolean,
+      default: false,
+    },
+
+    isIncomplete: {
+      type: Boolean,
+      default: false,
+    },
+
+    overtimeHours: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    overtimeApproved: {
+      type: Boolean,
+      default: false,
+    },
+
+    leaveRequestID: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "LeaveRequest",
       default: null,
+    },
+
+    isCorrected: {
+      type: Boolean,
+      default: false,
+    },
+
+    correctedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    correctionReason: {
+      type: String,
+    },
+
+    locked: {
+      type: Boolean,
+      default: false,
     },
   },
   {
@@ -54,6 +103,9 @@ const attendanceSchema = new mongoose.Schema(
 
 
 
-const Attendance = mongoose.model("Attendance",attendanceSchema);
+const Attendance = mongoose.model(
+  "Attendance",
+  attendanceSchema
+);
 
 module.exports = Attendance;
