@@ -13,19 +13,10 @@ const departmentSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
-        code: {
-            type: String,
-            trim: true,
-            uppercase: true 
-        },
         manager_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Employee'
         },
-        is_active: {
-            type: Boolean,
-            default: true
-        }
     },
     {timestamps: true}
 )
