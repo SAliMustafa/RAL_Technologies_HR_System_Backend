@@ -4,10 +4,11 @@ const holidayListSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    companyID: {
+    company_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company"
     },
@@ -17,10 +18,19 @@ const holidayListSchema = new mongoose.Schema(
       required: true
     },
 
-    weeklyOffDays: {
+    weekly_off_days: {
       type: [String],
       required: true,
-      default: ["Friday", "Saturday"]
+      enum: [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday'
+      ],
+      default: ["friday", "saturday"]
     }
   },
   { timestamps: true }

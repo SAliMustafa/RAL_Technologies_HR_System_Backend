@@ -2,38 +2,38 @@ const mongoose = require("mongoose");
 
 const leaveRequestSchema = new mongoose.Schema(
   {
-    employeeID: {
+    employee_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true
     },
 
-    leaveTypeID: {
+    leave_type_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "LeaveType",
       required: true
     },
 
-    fromDate: {
+    from_date: {
       type: Date,
       required: true
     },
 
-    toDate: {
+    to_date: {
       type: Date,
       required: true
     },
 
-    isHalfDay: {
+    is_half_day: {
       type: Boolean,
       default: false
     },
 
-    halfDayDate: {
+    half_day_date: {
       type: Date
     },
 
-    totalDays: {
+    total_days: {
       type: Number,
       required: true
     },
@@ -46,7 +46,7 @@ const leaveRequestSchema = new mongoose.Schema(
       type: String
     },
 
-    approverID: {
+    approver_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true
@@ -65,7 +65,7 @@ const leaveRequestSchema = new mongoose.Schema(
       required: true
     },
 
-    balanceAtRequest: {
+    balance_at_request: {
       type: Number
     }
   },
