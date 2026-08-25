@@ -155,8 +155,8 @@ const employeeSchema = new mongoose.Schema(
         },
     },
     bank_name: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Bank',
+        type: String,
+        trim: true,
         required: true
     },
     mobile: {
