@@ -48,3 +48,19 @@ async function getDepartment(req, res) {
         return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
+
+
+async function getDepartmentById(req,res){
+    try{
+        const department = await Department.findById(req.res.id)
+
+        if (!department){
+            return res.status(404).json.({message: 'Department Not Found'})
+        }
+        return res.status(200).json(department)
+    }
+    catch(err){
+        console.log(err)
+        return res.status(500).josn({message: 'Internal Server Error'})
+    }
+}
