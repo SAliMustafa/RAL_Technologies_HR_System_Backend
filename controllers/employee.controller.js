@@ -131,3 +131,29 @@ async function updateEmployee(req, res) {
   }
 }
 
+async function linkUserAccount(req,res) {
+    try{
+        const {employeeId} = req.params
+        const {userId} = req.body
+        if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ error: 'invalid employee id or user id' })
+    }
+    const employee = await Employee.findById(employeeId)
+    if(!employee) {
+        return res.status(404).json({error:'employee not found'})
+    }
+    employee.user = userId
+    await employee.save()
+    res.status(200).json(employee)
+    } catch(err){
+        res.status(500).json({error:err.message})
+    }
+}
+
+module.exports = {
+    createEmployee,
+    getAllEmployees,
+    getEmployeeById,
+    updateEmployee,
+    linkUserAccount
+}
