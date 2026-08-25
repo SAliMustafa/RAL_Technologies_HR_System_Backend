@@ -2,45 +2,52 @@ const mongoose = require("mongoose");
 
 const salaryComponentSchema = new mongoose.Schema(
   {
-    componentName: {
+    component_name: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true
     },
 
-    componentType: {
+    component_type: {
       type: String,
       enum: ["earning", "deduction"],
       required: true
     },
 
-    isBasic: {
+    is_basic: {
       type: Boolean,
-      required: true
+      required: true,
+      default: false
     },
 
-    isCash: {
+    is_cash: {
       type: Boolean,
-      required: true
+      required: true,
+      default: true
     },
 
-    isSocialAllowance: {
+    is_social_allowance: {
       type: Boolean,
-      required: true
+      required: true,
+      default: false
     },
 
-    countsForSIO: {
+    counts_for_sio: {
       type: Boolean,
-      required: true
+      required: true,
+      default: false
     },
 
-    countsForEOS: {
+    counts_for_eos: {
       type: Boolean,
-      required: true
+      required: true,
+      default: false
     },
 
     formula: {
-      type: String
+      type: String,
+      trim: true
     }
   },
   { timestamps: true }
