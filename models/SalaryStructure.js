@@ -4,10 +4,11 @@ const salaryStructureSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    companyID: {
+    company_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
       required: true
@@ -16,24 +17,33 @@ const salaryStructureSchema = new mongoose.Schema(
     currency: {
       type: String,
       default: "BHD",
-      required: true
+      required: true,
+      uppercase: true,
+      trim: true
     },
 
     lines: [
       {
-        salaryComponentID: {
+        salary_component_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "SalaryComponent",
           required: true
         },
 
-        amount: Number,
+        amount: {
+          type: Number,
+          min: 0
+        },
 
-        percent: Number
+        percent: {
+          type: Number,
+          min: 0,
+          max: 100
+        }
       }
     ],
 
-    isActive: {
+    is_active: {
       type: Boolean,
       default: true
     }
