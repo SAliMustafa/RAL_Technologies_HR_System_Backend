@@ -12,23 +12,7 @@ const designationSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
-        code: {
-            type: String,
-            trim: true,
-            uppercase: true
-        },
-        department_id: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Department'
-        },
-        description: {
-            type: String,
-            trim: true
-        },
-        is_active: {
-            type: Boolean,
-            default: true
-        }
+        
     },
     {timestamps: true}
 )
