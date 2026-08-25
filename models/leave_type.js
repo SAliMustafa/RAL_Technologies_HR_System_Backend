@@ -2,40 +2,41 @@ const mongoose = require("mongoose");
 
 const leaveTypeSchema = new mongoose.Schema(
   {
-    leaveTypeName: {
+    leave_type_name: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true
     },
 
-    maxDaysPerYear: {
+    max_days_per_year: {
       type: Number,
       required: true
     },
 
-    payFraction: {
+    pay_fraction: {
       type: Number,
       required: true,
       min: 0,
       max: 1
     },
 
-    requiresServiceMonths: {
+    requires_service_months: {
       type: Number,
       default: 0
     },
 
-    requiresDocument: {
+    requires_document: {
       type: Boolean,
       default: false
     },
 
-    carryForward: {
+    carry_forward: {
       type: Boolean,
       default: false
     },
 
-    maxCarryForward: {
+    max_carry_forward: {
       type: Number
     },
 
@@ -44,28 +45,27 @@ const leaveTypeSchema = new mongoose.Schema(
       default: false
     },
 
-    countsTowardService: {
+    counts_toward_service: {
       type: Boolean,
       default: true
     },
 
-    oncePerLifetime: {
+    once_per_lifetime: {
       type: Boolean,
       default: false
     },
 
-    includesHolidays: {
+    includes_holidays: {
       type: Boolean,
       default: false
     },
 
-    genderRestriction: {
+    gender_restriction: {
       type: String,
       enum: ["Maternity", "paternity"],
-      default: "none"
     },
 
-    nextLeaveTypeID: {
+    next_leave_type_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "LeaveType"
     }
