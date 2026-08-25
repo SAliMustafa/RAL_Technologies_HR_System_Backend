@@ -2,24 +2,24 @@ const mongoose = require("mongoose");
 
 const salaryAssignmentSchema = new mongoose.Schema(
   {
-    employeeID: {
+    employee_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true
     },
 
-    salaryStructureID: {
+    salary_structure_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SalaryStructure",
       required: true
     },
 
-    fromDate: {
+    from_date: {
       type: Date,
       required: true
     },
 
-    baseAmountFils: {
+    base_amount_fils: {
       type: Number,
       required: true,
       min: 0
@@ -27,6 +27,8 @@ const salaryAssignmentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+salaryAssignmentSchema.index({employee_id: 1, from_date: 1}, {unique: true})
 
 module.exports = mongoose.model(
   "SalaryAssignment",
