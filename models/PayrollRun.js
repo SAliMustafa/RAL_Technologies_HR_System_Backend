@@ -2,18 +2,18 @@ const mongoose = require("mongoose");
 
 const payrollRunSchema = new mongoose.Schema(
   {
-    companyID: {
+    company_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
       required: true
     },
 
-    periodStart: {
+    period_start: {
       type: Date,
       required: true
     },
 
-    periodEnd: {
+    period_end: {
       type: Date,
       required: true
     },
@@ -31,36 +31,38 @@ const payrollRunSchema = new mongoose.Schema(
       required: true
     },
 
-    cutoffAt: {
+    cutoff_at: {
       type: Date,
       required: true
     },
 
-    approvedBy: {
+    approved_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User"
     },
 
-    approvedAt: {
+    approved_at: {
       type: Date
     },
 
-    payslipsVisibleFrom: {
+    payslips_visible_from: {
       type: Date,
       required: true
     },
 
-    totalGrossFils: {
+    total_gross_fils: {
       type: Number,
-      default: 0
+      default: 0,
+      min: 0
     },
 
-    totalDeductionsFils: {
+    total_deductions_fils: {
       type: Number,
-      default: 0
+      default: 0,
+      min: 0
     },
 
-    totalNetFils: {
+    total_net_fils: {
       type: Number,
       default: 0
     }
@@ -68,6 +70,7 @@ const payrollRunSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+payrollRunSchema.index({company_id: 1, period_start: 1, period_end: 1}, {unique: true})
 
 module.exports = mongoose.model(
   "PayrollRun",
