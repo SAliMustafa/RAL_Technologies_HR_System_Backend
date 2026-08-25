@@ -193,6 +193,10 @@ const employeeSchema = new mongoose.Schema(
     shift_type_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ShiftType'
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
   },
   { timestamps: true }
