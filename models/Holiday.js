@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const holidaySchema = new mongoose.Schema(
   {
-    holidayListID: {
+    holiday_list_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "HolidayList",
       required: true
@@ -15,15 +15,18 @@ const holidaySchema = new mongoose.Schema(
 
     description: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    isConfirmed: {
+    is_confirmed: {
       type: Boolean,
       default: true
     }
   },
   { timestamps: true }
 );
+
+holidaySchema.index({holiday_list_id: 1, date: 1}, {unique: true})
 
 module.exports = mongoose.model("Holiday", holidaySchema);
