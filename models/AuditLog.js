@@ -2,14 +2,16 @@ const mongoose = require("mongoose");
 
 const auditLogSchema = new mongoose.Schema(
   {
-    tableName: {
+    table_name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    recordID: {
+    record_id: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     action: {
@@ -24,39 +26,45 @@ const auditLogSchema = new mongoose.Schema(
       required: true
     },
 
-    changedBy: {
+    changed_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
     },
 
-    changedAt: {
+    changed_at: {
       type: Date,
       default: Date.now,
       required: true
     },
 
-    fieldName: {
+    field_name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    oldValue: {
+    old_value: {
       type: String
     },
 
-    newValue: {
+    new_value: {
       type: String
     },
 
     reason: {
-      type: String
+      type: String,
+      trim: true
     },
 
-    ipAddress: {
-      type: String
+    ip_address: {
+      type: String,
+      trim: true
     }
   }
 );
+
+auditLogSchema.index({table_name: 1, record_id: 1})
+auditLogSchema.index({changed_at: -1})
 
 module.exports = mongoose.model("AuditLog", auditLogSchema);
