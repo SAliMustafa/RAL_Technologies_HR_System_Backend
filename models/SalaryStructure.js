@@ -39,7 +39,7 @@ const salaryStructureSchema = new mongoose.Schema(
           type: Number,
           min: 0,
           max: 100
-        }
+        },
       }
     ],
 
