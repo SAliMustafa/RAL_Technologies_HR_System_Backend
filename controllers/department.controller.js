@@ -55,7 +55,7 @@ async function getDepartmentById(req,res){
         const department = await Department.findById(req.res.id)
 
         if (!department){
-            return res.status(404).json.({message: 'Department Not Found'})
+            return res.status(404).json({message: 'Department Not Found.'})
         }
         return res.status(200).json(department)
     }
@@ -63,4 +63,34 @@ async function getDepartmentById(req,res){
         console.log(err)
         return res.status(500).josn({message: 'Internal Server Error'})
     }
+}
+
+async function updateDepartment(req,res){
+    try{
+        const {name, manager_id} = req.body
+
+        const department = await Department.findByIdAndUpdate(
+            req.paras.id,
+            {name, manager_id},
+            {new: ture, runValidators: true}
+        )
+        if (!department){
+            return res.status(404).json({message: 'Department Not Found.'})
+        }
+        return res.status(200).json(departmert)
+    }
+    catch(err){
+        console.log(err)
+        if (err.code === 11000){
+            return res.status(409).json({
+                message: 'A department with this name already exists for this company.'
+            })
+        }
+        return res.status(500).json({message: 'Internal Server Error'})
+    }
+}
+
+
+module.exports = {
+    createDepartment, getDepartment, getDepartmentById, updateDepartment
 }
