@@ -6,7 +6,7 @@ const departmentController = require('../controllers/department.controller')
 
 router.post("/", verifyToken, verifyHrAdmin, departmentController.createDepartment)
 
-router.get("/", verifyToken, departmentController.getDepartments)
+router.get("/", verifyToken, departmentController.getDepartment)
 
 router.get("/:id", verifyToken, validateObjectId, departmentController.getDepartmentById)
 
