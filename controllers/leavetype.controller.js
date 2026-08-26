@@ -87,9 +87,63 @@ async function getLeaveTypeById(req,res){
     }
 }
 
+async function unpdateLeaveType(req,res){
+    try{
+        const {id} = req.params
+        const {
+            leave_type_name,
+            max_days_per_year,
+            pay_fraction,
+            requires_service_months,
+            requires_document,
+            carry_forward,
+            max_carry_forward,
+            counts_toward_service,
+            once_per_lifetime,
+            gender_restriction,
+            next_leave_type_id,  
+            } = req.body
+
+        if (req.body.next_leave_type_id === undefined){
+            await validateNextLeaveType(next_leave_type_id, id)
+        }
+
+        const updates = {
+            ...(leave_type_name !== undefined && {leave_type_name}),
+            ...(max_days_per_year !== undefined && {max_days_per_year}),
+            ...(pay_fraction !== undefined && {pay_fraction}),
+            ...(requires_service_months !== undefined && {requires_service_months}),
+            ...(requires_document !== undefined && { requires_document }),
+            ...(carry_forward !== undefined && { carry_forward }),
+            ...(max_carry_forward !== undefined && { max_carry_forward }),
+            ...(counts_toward_service !== undefined && { counts_toward_service }),
+            ...(once_per_lifetime !== undefined && { once_per_lifetime }),
+            ...(gender_restriction !== undefined && { gender_restriction }),
+            ...(next_leave_type_id !== undefined && { next_leave_type_id }),
+        }
+
+        const updated = await LeaveType.findByIdAndUpdate(id,updates,
+            {new: true, runValidators: true}
+        )
+
+        if(!updated){
+            return res.status(404).json({message: 'Leave type not found.'})
+        }
+
+        res.status(200).json(updated)
+
+    }catch(err){
+        if (err.code === 11000) {
+            return res.status(409).json({message: "A leave type with this name already exists."});
+        }
+        return res.status(500).json({message: err})
+    }
+}
+
 
 module.exports = {
     createLeaveType,
     getAllLeaveTypes,
-    getLeaveTypeById
+    getLeaveTypeById,
+    unpdateLeaveType
 }
