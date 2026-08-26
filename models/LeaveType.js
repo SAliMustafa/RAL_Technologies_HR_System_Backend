@@ -40,11 +40,6 @@ const leaveTypeSchema = new mongoose.Schema(
       type: Number
     },
 
-    encashable: {
-      type: Boolean,
-      default: false
-    },
-
     counts_toward_service: {
       type: Boolean,
       default: true
@@ -62,7 +57,7 @@ const leaveTypeSchema = new mongoose.Schema(
 
     gender_restriction: {
       type: String,
-      enum: ["Maternity", "paternity"],
+      enum: ["maternity", "paternity"],
     },
 
     next_leave_type_id: {
