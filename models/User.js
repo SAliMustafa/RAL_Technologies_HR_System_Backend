@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Employee = require("./Employee");
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,9 +16,15 @@ const userSchema = new mongoose.Schema(
     },
     role:{
       type:String,
-      require:true,
+      required:true,
       enum:["employee","manager","hr_admin"],
       default:"employee"
+    },
+    employeeId:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: Employee,
+      unique: true,
+      sparse: true
     }
   },
   { timestamps: true },
