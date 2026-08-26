@@ -59,7 +59,7 @@ async function createLeaveType(req,res){
     }
 }
 
-async function getLeaveType(req,res){
+async function getAllLeaveTypes(req,res){
     try{
         const includeInactive = await req.query.includeInactive === 'true'
         const filter = includeInactive ? {} : {is_active: true}
@@ -71,7 +71,25 @@ async function getLeaveType(req,res){
     }
 }
 
+async function getLeaveTypeById(req,res){
+    try{
+        const {id} = req.params
+
+        const leaveType = await LeaveType.findById(id).populate("next_leave_type_id", "leave_type_name")
+
+        if(!leaveType){
+            res.status(404).json({message: "Leave type not found"})
+        }
+        return res.status(200).json({leaveType})
+
+    }catch(err){
+        console.log(err)
+    }
+}
+
+
 module.exports = {
     createLeaveType,
-    getLeaveType
+    getAllLeaveTypes,
+    getLeaveTypeById
 }
