@@ -140,10 +140,28 @@ async function unpdateLeaveType(req,res){
     }
 }
 
+async function deactivateLeaveType(req,res){
+    try{
+        const {id} = req.params
+
+        const leaveType = await LeaveType.findByIdAndUpdate(id, {is_active: false}, {new: true})
+
+        if (!leaveType) {
+            return res.status(404).json({ success: false, message: "Leave type not found." });
+        }
+
+        return res.status(200).json(leaveType)
+    }catch(err){
+        res.status(500).json(err)
+    }
+}
+
+
 
 module.exports = {
     createLeaveType,
     getAllLeaveTypes,
     getLeaveTypeById,
-    unpdateLeaveType
+    unpdateLeaveType,
+    deactivateLeaveType
 }
