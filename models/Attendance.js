@@ -54,12 +54,6 @@ const attendanceSchema = new mongoose.Schema(
       default: false,
     },
 
-    overtime_hours: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
 
     leave_request_id: {
       type: mongoose.Schema.Types.ObjectId,
