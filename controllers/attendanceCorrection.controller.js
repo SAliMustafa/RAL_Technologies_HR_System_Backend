@@ -117,10 +117,10 @@ async function correctByHr(req, res) {
             { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
         )
 
-        correction.status = "corrected_by_hr";
-        correction.corrected_by = req.user._id;
-        correction.corrected_at = new Date();
-        await correction.save();
+        correction.status = "corrected_by_hr"
+        correction.corrected_by = req.user._id
+        correction.corrected_at = new Date()
+        await correction.save()
 
         return res.status(200).json(correction)
     }
@@ -163,5 +163,33 @@ async function approveCorrection(req, res) {
     catch (err) {
         console.log(err)
         return res.status(500).json({ message: 'Internal Server Error' })
+    }
+}
+
+
+async function rejectCorrection(req, res) {
+    try {
+        const correction = await AttendanceCorrection.findById(req.params.id)
+
+        if (!correction) {
+            return res.status(404).json({ message: 'Correction request not found.' })
+        }
+
+        if (correction.status === 'approved' || correction.status === 'rejected') {
+            return res.status(400).json({
+                message: `Cannot reject a request in "${correction.status}" status.`
+            })
+        }
+        
+        correction.status = 'rejected'
+        correction.rejected_at = new Date()
+        await correction.save()
+
+        return res.status(200).json(correction)
+    }
+
+    catch(err){
+        console.log(err)
+        return res.status(500).json({message: 'Internal Server Error'})
     }
 }
