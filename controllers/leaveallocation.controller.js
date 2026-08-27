@@ -59,6 +59,22 @@ async function createLeaveAllocation(req,res){
     }
 }
 
+async function getAllLeaveAllocations(req,res){
+    try{
+        const {employee_id, leave_type_id} = req.query
+        const filter = {}
+
+        if(employee_id){
+            if(!isValidId(employee_id)){
+                return res.status(400).json({message: "Invalid employee_id."})
+            }
+            filter.employee_id = employee_id
+        }
+    }catch(err){
+        console.log(err)
+    }
+}
+
 
 module.exports = {
     createLeaveAllocation

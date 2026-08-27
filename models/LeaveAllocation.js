@@ -48,4 +48,4 @@ leaveAllocationSchema.index(
     {unique: true}
 )
 
-module.exports = mongoose.model("LeaveAllocation", leaveAllocationSchema);
+module.exports = mongoose.model("LeaveAllocation", leaveAllocationSchema);  
