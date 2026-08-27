@@ -44,3 +44,28 @@ async function createCorrectionRequest(req,res){
         return res.status(500).json({message: 'Internal Server Error'})
     }
 }
+
+
+async function getCorrectionRequests(req,res){
+    try{
+        const user = await User.findById(req.user._id)
+        const filter = {}
+        const {status} = req.query
+
+        if(user.role === 'manager'){
+            filter.requested_by = req.user._id
+        }
+        else if(user.role === 'employee'){
+            filter.employee_id = user.employee_id
+        }
+
+        if(status) filter.status = status
+
+        const corrections = await AttendanceCorrection.find(filter).sort({requested_at: -1})
+        return res.status(200).json(correction)
+    }
+    catch(err){
+        console.log(err)
+        return res.status(500).json({message: 'Internal Server Error'})
+    }
+}
