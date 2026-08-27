@@ -59,7 +59,50 @@ async function createLeaveAllocation(req,res){
     }
 }
 
+async function getAllLeaveAllocations(req,res){
+    try{
+        const {employee_id, leave_type_id} = req.query
+        const filter = {}
+
+        if(employee_id){
+            if(!isValidId(employee_id)){
+                return res.status(400).json({message: "Invalid employee_id."})
+            }
+            filter.employee_id = employee_id
+        }
+
+        if(leave_type_id){
+            if(!isValidId(leave_type_id)){
+                return res.status(400).json({message: "Invalid leave_type_id."})
+            }
+            filter.leave_type_id = leave_type_id
+        }
+
+        if(req.user){
+            if(req.user.role === 'employee'){
+                filter.employee_id = req.user.employee_id
+            } else if(req.user.role === 'manager'){
+                const teamId = await Employee.find({reports_to: req.user.employee_id}).distinct('_id')
+                teamId.push(req.user.employee_id)
+                filter.employee_id = filter.employee_id 
+                ? filter.employee_id : {$in: teamId}
+            }
+        }
+
+        const allocation = await LeaveAllocation.find(filter)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+            .sort({period_start: -1})
+
+        return res.status(200).json({count: allocation.length, data: allocation})
+
+    }catch(err){
+        console.log(err)
+    }
+}
+
 
 module.exports = {
-    createLeaveAllocation
+    createLeaveAllocation,
+    getAllLeaveAllocations
 }
