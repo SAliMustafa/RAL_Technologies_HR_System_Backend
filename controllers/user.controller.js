@@ -49,7 +49,7 @@ async function getUserById(req,res){
         if(!mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(409).json({error:'invalid user id'})
         }
-        const usre = await User.findById(userId).populate(
+        const user = await User.findById(userId).populate(
             'employeeId',
             'name_en name_ar employee_code'
         )
@@ -57,9 +57,38 @@ async function getUserById(req,res){
             return res.status(404).json({error:'user not found'})
         }
         res.status(200).json(user);
-
+        
     }
     catch(err){
         res.status(500).json({ error: err.message });
+    }
+}
+
+async function updateUser(req,res){
+    try{
+        const {userId} = req.params
+        if(!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(409).json({error:'invalid user id'})
+        }
+        const user = await User.findById(userId)
+        if(!user) {
+            return res.status(404).json({error:'user not found'})
+        }
+        const {password, ...rest} = req.body
+        Object.assign(user, rest)
+        if(password) {
+            user.hashedPassword = await bcrypt.hash(password,10)
+        }
+        await user.save()
+        res.status(200).json(user)
+    } catch(err){
+        if(err.code === 11000){
+            return res.status(409).json({error:'Username or Employee Id already exists'})
+
+        }
+        if (err.name === 'ValidationError'){
+            return res.status(400).json({error: err.message})
+        }
+        res.status(500).json({ error: err.message})
     }
 }
