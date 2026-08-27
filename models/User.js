@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const Employee = require("./Employee");
 
 const userSchema = new mongoose.Schema(
   {
@@ -22,7 +21,7 @@ const userSchema = new mongoose.Schema(
     },
     employeeId:{
       type: mongoose.Schema.Types.ObjectId,
-      ref: Employee,
+      ref: 'Employee',
       unique: true,
       sparse: true
     }
