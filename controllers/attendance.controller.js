@@ -1,11 +1,12 @@
 const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
-
+const AuditLog = require('../models/AuditLog')
 
 async function createAttendance(req, res) {
     try {
-        const { employee_id, date, status, in_time, out_time } = req.body
+        const employee_id = req.user._id
+        const { date, status, in_time, out_time } = req.body
 
         if (!employee_id || !date || !status) {
             return res.status(400).json({
@@ -20,6 +21,7 @@ async function createAttendance(req, res) {
             in_time,
             out_time
         })
+
         return res.status(201).json(attendance)
     }
     catch (err) {
