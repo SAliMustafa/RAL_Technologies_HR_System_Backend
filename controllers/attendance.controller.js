@@ -75,7 +75,7 @@ async function getAttendance(req, res) {
 }
 
 
-async function getAttendaceById(req, res) {
+async function getAttendanceById(req, res) {
     try {
         const attendance = await Attendance.findById(req.params.id)
 
@@ -138,4 +138,13 @@ async function updateAttendance(req, res) {
 
         return res.status(500).json({ message: 'Internal Server Error' })
     }
+}
+
+
+
+module.exports = {
+    createAttendance,
+    getAttendance,
+    getAttendanceById,
+    updateAttendance,
 }
