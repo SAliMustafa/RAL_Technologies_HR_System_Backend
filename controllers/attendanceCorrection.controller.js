@@ -193,3 +193,12 @@ async function rejectCorrection(req, res) {
         return res.status(500).json({message: 'Internal Server Error'})
     }
 }
+
+module.exports = {
+  createCorrectionRequest,
+  getCorrectionRequests,
+  getCorrectionById,
+  correctByHr,
+  approveCorrection,
+  rejectCorrection,
+}
