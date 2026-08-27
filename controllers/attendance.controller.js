@@ -85,23 +85,57 @@ async function getAttendaceById(req, res) {
 
         const user = await User.findById(req.user._id)
         if (user.role === "employee" && String(attendance.employee_id) !== String(user.employee_id)) {
-            return res.status(403).json({ message: 'This is not within your authority.'});
+            return res.status(403).json({ message: 'This is not within your authority.' });
         }
 
-        if(user.role === 'manager'){
+        if (user.role === 'manager') {
             const managed = await Employee.exists({
                 _id: attendance.employee_id,
                 reports_to: user.employee_id
             })
 
-            if(!managed){
-                return res.status(403).json({message: 'This is not within your authority.'})
+            if (!managed) {
+                return res.status(403).json({ message: 'This is not within your authority.' })
             }
         }
         res.status(200).json(attendance)
     }
-    catch(err){
+    catch (err) {
         console.log(err)
-        return res.status(500).json({message: 'Internal Server Error'})
+        return res.status(500).json({ message: 'Internal Server Error' })
+    }
+}
+
+
+async function updateAttendance(req, res) {
+    try {
+        const { status, in_time, out_time, is_late_entry, is_early_exit, is_incomplete } = req.body
+
+        const attendance = await Attendance.findByIdAndUpdate(
+            req.params.id,
+            {
+                status,
+                in_time,
+                out_time,
+                is_late_entry,
+                is_early_exit,
+                is_incomplete,
+                is_corrected: true,
+                corrected_by: req.user._id,
+            }, { new: true, runValidators: true }
+        )
+
+        if (!attendance) {
+            return res.status(404).json({ message: 'Attendance record not found.' })
+        }
+        return res.status(200).json({ attendance })
+    }
+    catch (err) {
+        console.log(err)
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ message: err.message })
+        }
+
+        return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
