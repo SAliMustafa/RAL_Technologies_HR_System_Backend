@@ -50,19 +50,20 @@ const leaveTypeSchema = new mongoose.Schema(
       default: false
     },
 
-    includes_holidays: {
-      type: Boolean,
-      default: false
-    },
-
     gender_restriction: {
       type: String,
-      enum: ["maternity", "paternity"],
+      enum: ["maternity", "paternity", null],
+      default: null
     },
 
     next_leave_type_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "LeaveType"
+    },
+
+    is_active: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }
