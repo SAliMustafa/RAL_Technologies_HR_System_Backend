@@ -83,7 +83,7 @@ const  employeeDocumentSchema = new mongoose.Schema(
       }
     }
     ,
-    is_actavite:{
+    is_active:{
       type:Boolean,
       default:true
     }

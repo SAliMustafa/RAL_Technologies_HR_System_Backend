@@ -2,7 +2,7 @@ const EmployeeDocument = require("../models/EmployeeDocument")
 const Employee = require("../models/Employee")
 const AuditLog = require("../models/AuditLog")
 
-
+// lets an employee upload their own document.
 async function uploadDocumentByEmployee(req, res) {
   try {
     const employee_id = req.user._id
@@ -31,7 +31,7 @@ async function uploadDocumentByEmployee(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
-
+// lets an employee update or re-upload their own document.
 async function updateDocumentByEmployee(req, res) {
 
   try {
@@ -86,7 +86,7 @@ async function updateDocumentByEmployee(req, res) {
   }
 }
 
-
+// gets all documents that belong to the logged-in employee.
 async function getMyDocuments(req, res) {
   try {
     const employee_id = req.user._id
@@ -99,6 +99,19 @@ async function getMyDocuments(req, res) {
 
 }
 
+// gets all employee documents; only for HR-Admin.
+async function getAllDocuments(req, res) {
+  try {
+    const getAllDocument = await EmployeeDocument.find()
+    res.status(200).json(getAllDocument);
+
+  } catch (error) {
+    res.status(500).json({ message: err.message });
+  }
+
+}
+
+// gets one specific document by its ID
 async function getDocumentById(req, res) {
   try {
     const documentId = req.params.documentId
@@ -111,7 +124,7 @@ async function getDocumentById(req, res) {
   }
 }
 
-
+// gets all employee documents; only for HR-Admin.
 async function uploadDocumentByHrAdmain(req, res) {
   try {
     const employee_id = req.params.employeeId
@@ -227,12 +240,12 @@ async function uploadDocumentByHrAdmain(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
-
+// lets HR-Admin update a specific employee document .
 async function updateDocumentByHrAdmain(req, res) {
   try {
-   
+
     const documentId = req.params.documentId
-   
+
     const findDocument = await EmployeeDocument.findById(documentId)
 
     if (!findDocument) {
@@ -240,7 +253,7 @@ async function updateDocumentByHrAdmain(req, res) {
         message: "Document not found"
       });
     }
-    
+
     const uploaded_by = req.user._id
     const verified_by = req.user._id
     const file = req.file
@@ -252,7 +265,7 @@ async function updateDocumentByHrAdmain(req, res) {
 
 
 
-    const uploadOneDocument = await EmployeeDocument.findByIdAndUpdate(documentId,{
+    const uploadOneDocument = await EmployeeDocument.findByIdAndUpdate(documentId, {
       document_type,
       issue_date,
       expiry_date,
@@ -261,7 +274,7 @@ async function updateDocumentByHrAdmain(req, res) {
       status: "verified",
       verified_by,
       verified_on: new Date()
-    },{
+    }, {
       new: true,
       runValidators: true
     });
@@ -294,48 +307,48 @@ async function updateDocumentByHrAdmain(req, res) {
         action: "update",
         changed_by: uploaded_by,
         field_name: "expiry_date",
-        old_value: findDocument.expiry_date || "" ,
+        old_value: findDocument.expiry_date || "",
         new_value: expiry_date || ""
         , ip_address: req.ip,
       },
-       {
+      {
         table_name: "EmployeeDocument",
         record_id: uploadOneDocument._id.toString(),
         action: "update",
         changed_by: uploaded_by,
         field_name: "file",
-        old_value: findDocument.file  ,
-        new_value:  file.path 
+        old_value: findDocument.file,
+        new_value: file.path
         , ip_address: req.ip,
       },
-       {
+      {
         table_name: "EmployeeDocument",
         record_id: uploadOneDocument._id.toString(),
         action: "update",
         changed_by: uploaded_by,
         field_name: "status",
-        old_value: findDocument.status  ,
-        new_value:  "verified"
+        old_value: findDocument.status,
+        new_value: "verified"
         , ip_address: req.ip,
       },
-       {
+      {
         table_name: "EmployeeDocument",
         record_id: uploadOneDocument._id.toString(),
         action: "update",
         changed_by: uploaded_by,
-        field_name: "status",
-        old_value: findDocument.verified_by  ,
-        new_value:  verified_by
+        field_name: "verified_by",
+        old_value: findDocument.verified_by,
+        new_value: verified_by
         , ip_address: req.ip,
       },
-        {
+      {
         table_name: "EmployeeDocument",
         record_id: uploadOneDocument._id.toString(),
         action: "update",
         changed_by: uploaded_by,
-        field_name: "status",
-        old_value: findDocument.verified_on  ,
-        new_value:  new Date()
+        field_name: "verified_on",
+        old_value: findDocument.verified_on,
+        new_value: new Date()
         , ip_address: req.ip,
       },
 
@@ -350,7 +363,7 @@ async function updateDocumentByHrAdmain(req, res) {
 }
 
 
-
+// lets HR-Admin review a pending document and either verify it or reject it with a reason.
 async function reviewDocument(req, res) {
   try {
 
@@ -434,41 +447,99 @@ async function reviewDocument(req, res) {
 }
 
 
-
-async function getExpiringDocuments() {
+// checks the logged-in employee’s verified documents and returns alerts for documents close to expiry.
+async function getExpiryAlerts(req, res) {
   try {
+    const employee_id = req.user._id;
+
+    const documents = await EmployeeDocument.find({
+      employee_id,
+      status: "verified",
+      expiry_date: { $ne: null }
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const alertDays = [90, 30, 7];
+
+    const alerts = [];
+
+    for (const document of documents) {
+
+      const expiryDate = new Date(document.expiry_date);
+      expiryDate.setHours(0, 0, 0, 0);
+
+      const difference = expiryDate - today;
+
+      const daysRemaining = Math.ceil(
+        difference / (1000 * 60 * 60 * 24)
+      );
+
+      if (alertDays.includes(daysRemaining)) {
+
+        alerts.push({
+          document_type: document.document_type,
+          daysRemaining,
+          message:
+            `Your ${document.document_type} will expire in ${daysRemaining} days`
+        });
+
+      }
+    }
+
+    return res.status(200).json(alerts);
 
   } catch (error) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      message: error.message
+    });
   }
 }
-
-async function checkDocumentExpiry() {
+//  lets HR-Admin change  is_actavite to False 
+async function deleteDocument(req, res) {
   try {
+    const changed_by = req.user._id
+    const documentId = req.params.documentId
+
+    const findDocument = await EmployeeDocument.findById(documentId)
+
+    if (!findDocument) {
+      return res.status(404).json({
+        message: "Document not found"
+      });
+    }
+    const deleteDocument = await EmployeeDocument.findByIdAndUpdate(documentId, {
+      is_active: false
+    }, {
+      new: true,
+      runValidators: true
+    });
+
+    await AuditLog.insertMany(
+      {
+        table_name: "EmployeeDocument",
+        record_id: deleteDocument._id.toString(),
+        action: "delete",
+        changed_by: changed_by,
+        field_name: "is_active",
+        old_value: true,
+        new_value: false,
+        reason: "Document deactivated by HR",
+         ip_address: req.ip,
+      })
+
+
+
+    res.status(200).json({ message: "Document deactivated by HR"  });
 
   } catch (error) {
-    res.status(500).json({ message: err.message });
-  }
-}
-
-async function sendExpiryAlerts() {
-  try {
-
-  } catch (error) {
-    res.status(500).json({ message: err.message });
-  }
-}
-
-async function deleteDocument() {
-  try {
-
-  } catch (error) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: error.message });
   }
 }
 
 
 module.exports = {
-  uploadDocumentByEmployee, updateDocumentByEmployee, getMyDocuments, getDocumentById, uploadDocumentByHrAdmain
+  uploadDocumentByEmployee, updateDocumentByEmployee, getMyDocuments, getDocumentById, uploadDocumentByHrAdmain, deleteDocument, getAllDocuments, getExpiryAlerts, reviewDocument, updateDocumentByHrAdmain
 
 }

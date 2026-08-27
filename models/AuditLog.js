@@ -21,7 +21,8 @@ const auditLogSchema = new mongoose.Schema(
         "update",
         "approve",
         "cancel",
-        "correct"
+        "correct",
+        "delete"
       ],
       required: true
     },
