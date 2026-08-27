@@ -32,7 +32,13 @@ async function createUser(req,res) {
 async function getAllUsers(req,res){
     try{
         const { role } = req.query
+        const filter = {}
+        if(role) filter.role = role
+        const users = await User.find(filter)
+        .populate("employeeId", "name_en name_ar employee_code")
+        .sort({ createdAt: -1 });
+        res.status(200).json(users);
     } catch(err){
-
+        res.status(500).json({ error: err.message})
     }
 }
