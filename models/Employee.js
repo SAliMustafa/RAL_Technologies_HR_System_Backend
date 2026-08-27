@@ -81,23 +81,13 @@ const employeeSchema = new mongoose.Schema(
         type: Boolean,
         required: true
     },
-    worker_category: {
+    department:{
+        type:String,
+        trim: true
+    },
+    job_title: {
         type: String,
-        required: true,
-        enum: ['bahraini', 'gcc_national', 'expatriate']
-    },
-    company_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Company',
-        required: true
-    },
-    department_id: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Department' 
-    },
-    designation_id: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Designation' 
+        trim: true
     },
     reports_to: {
         type: mongoose.Schema.Types.ObjectId,
@@ -184,15 +174,6 @@ const employeeSchema = new mongoose.Schema(
             validator: (v) => !v || EMAIL_REGEX.test(v),
             message: 'email_work is not a valid email address'
         }
-    },
-    holiday_list_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'HolidayList',
-        required: true
-    },
-    shift_type_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'ShiftType'
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
