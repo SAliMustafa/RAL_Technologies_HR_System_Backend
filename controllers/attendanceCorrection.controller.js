@@ -133,3 +133,35 @@ async function correctByHr(req, res) {
         return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
+
+
+async function approveCorrection(req, res) {
+    try {
+        const correction = await AttendanceCorrection.findById(req.params.id)
+
+        if (!correction) {
+            return res.status(404).json(({ message: 'Correction request not found.' }))
+        }
+
+        if (correction.status !== 'corrected_by_hr') {
+            return res.status(400).json({ message: `Cannot approve a request in "${correction.status}" status.` })
+        }
+
+        if (String(correction.requested_by) !== String(req.user._id)) {
+            return res.status(403).json({
+                message: 'Only the manager who requested this correction can approve it.'
+            })
+        }
+
+        correction.status = "approved"
+        correction.approved_by = req.user._id
+        correction.approved_at = new Date()
+        await correction.save()
+
+        return res.status(200).json(correction)
+    }
+    catch (err) {
+        console.log(err)
+        return res.status(500).json({ message: 'Internal Server Error' })
+    }
+}
