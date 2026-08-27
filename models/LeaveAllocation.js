@@ -39,6 +39,10 @@ const leaveAllocationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+leaveAllocationSchema.virtual('days_remaining').get(function(){
+    return this.days_allocated + this.days_carried_forward - this.days_taken
+})
+
 leaveAllocationSchema.index(
     {employee_id: 1, leave_type_id: 1, period_start: 1},
     {unique: true}
