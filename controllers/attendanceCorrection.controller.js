@@ -69,3 +69,19 @@ async function getCorrectionRequests(req,res){
         return res.status(500).json({message: 'Internal Server Error'})
     }
 }
+
+
+async function getCorrectionById(req,res){
+    try{
+        const correction = await AttendanceCorrection.findById(req.params.id)
+        
+        if(!correction){
+            res.status(404).json({message: 'Correction request not found.'})
+        }
+        res.status(200).json(correction)
+    }
+    catch(err){
+        console.log(err)
+        return res.status(500).json({message: 'Internal Server Error'})
+    }
+}
