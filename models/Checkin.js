@@ -25,17 +25,6 @@ const checkinSchema = new mongoose.Schema(
       required: true
     },
 
-    device_id: {
-      type: String
-    },
-
-    latitude: {
-      type: Number
-    },
-
-    longitude: {
-      type: Number
-    },
 
     attendance_id: {
       type: mongoose.Schema.Types.ObjectId,
