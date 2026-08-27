@@ -47,7 +47,7 @@ async function getUserById(req,res){
     try{
         const {userId} = req.params
         if(!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(409).json({error:'invalid user id'})
+            return res.status(400).json({error:'invalid user id'})
         }
         const user = await User.findById(userId).populate(
             'employeeId',
@@ -68,7 +68,7 @@ async function updateUser(req,res){
     try{
         const {userId} = req.params
         if(!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(409).json({error:'invalid user id'})
+            return res.status(400).json({error:'invalid user id'})
         }
         const user = await User.findById(userId)
         if(!user) {
@@ -92,3 +92,27 @@ async function updateUser(req,res){
         res.status(500).json({ error: err.message})
     }
 }
+
+async function deleteUser(req,res){
+    try{
+        const { userId} = req.params
+        if(!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({error:'invalid user id'})
+        }
+        const user = await User.findByIdAndDelete(userId)
+        if(!user) {
+            return res.status(404).json({error:'user not found'})
+        }
+        res.status(200).json({message:'user Deleted'})
+    } catch(err){
+        res.status(500).json({error: err.message})
+    }
+}
+
+module.exports = {
+  createUser,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+};
