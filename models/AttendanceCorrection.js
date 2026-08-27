@@ -52,19 +52,7 @@ const attendanceCorrectionSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User"
         },
-        requested_at: {
-            type: Date,
-            default: Date.now
-        },
-        corrected_at: {
-            type: Date
-        },
-        approved_at: {
-            type: Date
-        },
-        rejected_at: {
-            type: Date
-        }
+
     },{timestamps: true})
 
     const AttendanceCorrection = mongoose.model('AttendanceCorrection', attendanceCorrectionSchema)

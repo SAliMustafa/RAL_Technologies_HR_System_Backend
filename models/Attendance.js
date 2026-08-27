@@ -26,11 +26,6 @@ const attendanceSchema = new mongoose.Schema(
       required: true,
     },
 
-    shift_type_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ShiftType",
-    },
-
     in_time: {
       type: Date,
     },
@@ -59,16 +54,6 @@ const attendanceSchema = new mongoose.Schema(
       default: false,
     },
 
-    overtime_hours: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    overtime_approved: {
-      type: Boolean,
-      default: false,
-    },
 
     leave_request_id: {
       type: mongoose.Schema.Types.ObjectId,
