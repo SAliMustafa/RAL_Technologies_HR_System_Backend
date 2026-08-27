@@ -75,3 +75,33 @@ async function getAttendance(req, res) {
 }
 
 
+async function getAttendaceById(req, res) {
+    try {
+        const attendance = await Attendance.findById(req.params.id)
+
+        if (!attendance) {
+            return res.status(404).json({ message: 'Attendance record not found.' })
+        }
+
+        const user = await User.findById(req.user._id)
+        if (user.role === "employee" && String(attendance.employee_id) !== String(user.employee_id)) {
+            return res.status(403).json({ message: 'This is not within your authority.'});
+        }
+
+        if(user.role === 'manager'){
+            const managed = await Employee.exists({
+                _id: attendance.employee_id,
+                reports_to: user.employee_id
+            })
+
+            if(!managed){
+                return res.status(403).json({message: 'This is not within your authority.'})
+            }
+        }
+        res.status(200).json(attendance)
+    }
+    catch(err){
+        console.log(err)
+        return res.status(500).json({message: 'Internal Server Error'})
+    }
+}
