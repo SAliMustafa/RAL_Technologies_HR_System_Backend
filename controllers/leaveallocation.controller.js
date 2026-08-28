@@ -160,6 +160,27 @@ async function updateAllocation(req,res){
     }
 }
 
+async function deleteAllocation(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({message: "Invalid allocation id."})
+        }
+        const allocation = await LeaveAllocation.findById(id)
+        if(!allocation){
+            return res.status(404).json({message: "Allocation not found"})
+        }
+        if(allocation.days_taken > 0){
+            return res.status(409).json({
+                message: "Cannot delete an allocation that already has days taken against it."
+            })
+        }
+        await LeaveAllocation.findByIdAndDelete(id)
+        return res.status(200).json({message: "Allocation deleted."})
+    }catch(err){
+        return res.status(500).json({message: err.message})
+    }
+}
 
 
 
@@ -167,5 +188,6 @@ module.exports = {
     createLeaveAllocation,
     getAllLeaveAllocations,
     getAllocationById,
-    updateAllocation
+    updateAllocation,
+    deleteAllocation
 }
