@@ -55,7 +55,7 @@ async function createLeaveAllocation(req,res){
         return res.status(201).json(leaveAllocation)
         
     }catch(err){
-        res.status(500).json({message: err})
+        res.status(500).json({message: err.message})
     }
 }
 
@@ -94,14 +94,10 @@ async function getAllLeaveAllocations(req,res){
             .populate("leave_type_id", "leave_type_name")
             .sort({period_start: -1})
 
-        if(req.user.role === 'employee' && allocation.employee_id._id.toString() !== req.user.employee_id){
-            return res.status(403).json({ success: false, message: "Not authorized to view this allocation." });
-        }
-            
         return res.status(200).json({count: allocation.length, data: allocation})
 
     }catch(err){
-        console.log(err)
+        return res.status(500).json({message: err.message})
     }
 }
 
@@ -135,15 +131,15 @@ async function updateAllocation(req,res){
             return res.status(400).json({message: "Invalid allocation id."})
         }      
         const {period_start, period_end, days_allocated, days_carried_forward} = req.body
-    if (period_start && period_end && new Date(period_end) <= new Date(period_start)) {
-      return res.status(400).json({message: "period_end must be after period_start." });
-    }          
-    const updates = {
-        ...(period_start !== undefined && {period_start}),
-        ...(period_end !== undefined && {period_end}),
-        ...(days_allocated !== undefined && {days_allocated}),
-        ...(days_carried_forward !== undefined && {days_carried_forward}),
-    }
+        if (period_start && period_end && new Date(period_end) <= new Date(period_start)) {
+            return res.status(400).json({message: "period_end must be after period_start." });
+        }          
+        const updates = {
+            ...(period_start !== undefined && {period_start}),
+            ...(period_end !== undefined && {period_end}),
+            ...(days_allocated !== undefined && {days_allocated}),
+            ...(days_carried_forward !== undefined && {days_carried_forward}),
+        }
 
     const updated = await LeaveAllocation.findByIdAndUpdate(id, updates, {
         new: true, 
@@ -151,7 +147,7 @@ async function updateAllocation(req,res){
     })
 
     if(!updated){
-        res.status(404).json({message: "Allocation not found"})
+        return res.status(404).json({message: "Allocation not found"})
     }
 
     res.status(200).json(updated)
@@ -182,6 +178,24 @@ async function deleteAllocation(req,res){
     }
 }
 
+async function adjustDaysTaken(allocationId, deltaDays, session = null){
+    const allocation = await LeaveAllocation.findById(allocationId).session(session)
+    if(!allocation){
+        throw new Error("Allocation not found while adjusting days_taken.")
+    }
+    const newDaysTaken = allocation.days_taken + deltaDays
+    const maxAvailable = allocation.days_allocated + allocation.days_carried_forward
+    if(newDaysTaken < 0){
+        throw new Error("days_taken cannot go negative.")
+    }
+    if(newDaysTaken > maxAvailable){
+        throw new Error('Not enough remaining balance for this leave type.')
+    }
+
+    allocation.days_taken = newDaysTaken
+    await allocation.save({session})
+    return allocation
+}
 
 
 module.exports = {
@@ -189,5 +203,6 @@ module.exports = {
     getAllLeaveAllocations,
     getAllocationById,
     updateAllocation,
-    deleteAllocation
+    deleteAllocation,
+    adjustDaysTaken
 }
