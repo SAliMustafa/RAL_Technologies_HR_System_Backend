@@ -94,6 +94,10 @@ async function getAllLeaveAllocations(req,res){
             .populate("leave_type_id", "leave_type_name")
             .sort({period_start: -1})
 
+        if(req.user.role === 'employee' && allocation.employee_id._id.toString() !== req.user.employee_id){
+            return res.status(403).json({ success: false, message: "Not authorized to view this allocation." });
+        }
+            
         return res.status(200).json({count: allocation.length, data: allocation})
 
     }catch(err){
@@ -101,8 +105,32 @@ async function getAllLeaveAllocations(req,res){
     }
 }
 
+async function getAllocationById(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({message: "Invalid allocation id."})
+        }
+
+        const allocation = await LeaveAllocation.findById(id)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+
+        if(!allocation){
+            return res.status(404).json({message: "Allocation not found"})
+        }
+        if(req.user.role === 'employee' && allocation.employee_id._id.toString() !== req.user.employee_id){
+            return res.status(403).json({ success: false, message: "Not authorized to view this allocation." });
+        }
+        return res.status(200).json(allocation)
+    }catch(err){
+        return res.status(500).json({message: err.message})
+    }
+}
+
 
 module.exports = {
     createLeaveAllocation,
-    getAllLeaveAllocations
+    getAllLeaveAllocations,
+    getAllocationById
 }
