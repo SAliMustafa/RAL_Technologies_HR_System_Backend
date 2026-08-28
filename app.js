@@ -13,6 +13,7 @@ const leaveAllocationRoutes = require('./routes/leaveallocation.routes')
 const userRoutes = require('./routes/user.routes')
 const EmployeeDocumentRoutes =require("./routes/employeeDocument.routes")
 const employeeRoutes = require('./routes/employee.routes')
+const EmployeeDocumentRoutes =require("./routes/employeeDocument.routes")
 // Middleware
 app.use(
     cors({
@@ -32,6 +33,7 @@ app.use('/leave-allocation', leaveAllocationRoutes)
 app.use('/user', userRoutes)
 app.use('/documents', EmployeeDocumentRoutes)
 app.use('/employee', employeeRoutes)
+app.use('/documents', EmployeeDocumentRoutes)
 
 
 

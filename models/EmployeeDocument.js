@@ -8,7 +8,7 @@ const EXPIRING_DOC_TYPES = [
   'health_insurance'  
 ]
 
-const employeeDocumentSchema = new mongoose.Schema(
+const  employeeDocumentSchema = new mongoose.Schema(
   {
     employee_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -31,11 +31,7 @@ const employeeDocumentSchema = new mongoose.Schema(
       required: true
     },
 
-    document_number: {
-      type: String,
-      trim: true
-    },
-
+   
     issue_date: {
       type: Date
     },
@@ -86,6 +82,12 @@ const employeeDocumentSchema = new mongoose.Schema(
         message: 'rejection_reason is required when document status is "rejected".'
       }
     }
+    ,
+    is_active:{
+      type:Boolean,
+      default:true
+    }
+
   },
   { timestamps: true }
 );
