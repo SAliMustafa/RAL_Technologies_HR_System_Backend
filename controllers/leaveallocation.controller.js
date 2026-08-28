@@ -128,9 +128,44 @@ async function getAllocationById(req,res){
     }
 }
 
+async function updateAllocation(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({message: "Invalid allocation id."})
+        }      
+        const {period_start, period_end, days_allocated, days_carried_forward} = req.body
+    if (period_start && period_end && new Date(period_end) <= new Date(period_start)) {
+      return res.status(400).json({message: "period_end must be after period_start." });
+    }          
+    const updates = {
+        ...(period_start !== undefined && {period_start}),
+        ...(period_end !== undefined && {period_end}),
+        ...(days_allocated !== undefined && {days_allocated}),
+        ...(days_carried_forward !== undefined && {days_carried_forward}),
+    }
+
+    const updated = await LeaveAllocation.findByIdAndUpdate(id, updates, {
+        new: true, 
+        runValidators: true
+    })
+
+    if(!updated){
+        res.status(404).json({message: "Allocation not found"})
+    }
+
+    res.status(200).json(updated)
+    }catch(err){
+        res.status(500).json({message: err.message})
+    }
+}
+
+
+
 
 module.exports = {
     createLeaveAllocation,
     getAllLeaveAllocations,
-    getAllocationById
+    getAllocationById,
+    updateAllocation
 }
