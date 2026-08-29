@@ -312,7 +312,34 @@ async function submitLeaveRequest(req,res){
         return handleError(res,err,400)
     }
 }
+
+async function approveLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(leaveRequest.status !== 'pending'){
+            return res.status(409).json({success: false, message: "Only pending requests can be approved."})
+        }
+        const allocation = await findApplicableAllocation(leaveRequest.employee_id, leaveRequest.leave_type_id, leaveRequest.from_date)
+        if(!allocation){
+            return res.status(409).json({success: false, message: "No matching allocation found to deduct from."})
+        }
+        await adjustDaysTaken(allocation._id, leaveRequest.total_days)
+        leaveRequest.status = 'approved'
+        await leaveRequest.save()
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
 module.exports = {
     createLeaveRequest,
-    updateLeaveRequest
+    updateLeaveRequest,
+    submitLeaveRequest
 }
