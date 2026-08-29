@@ -2,16 +2,15 @@ const Department = require('../models/Department')
 
 async function createDepartment(req, res) {
     try {
-        const { company_id, name, manager_id } = req.body
+        const { name, manager_id } = req.body
 
-        if (!company_id || !name) {
+        if (!name) {
             return res.status(400).json({
                 message: 'company_id and name are required.'
             })
         }
 
         const department = await Department.create({
-            company_id,
             name,
             manager_id,
         })
@@ -36,10 +35,7 @@ async function createDepartment(req, res) {
 
 async function getDepartment(req, res) {
     try {
-        const { company_id } = req.query
-        const filter = company_id ? { company_id } : {}
-
-        const departments = await Department.find(filter).sort({ name: 1 })
+        const departments = await Department.find().sort({ name: 1 })
         return res.status(200).json(departments)
     }
 
