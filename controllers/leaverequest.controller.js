@@ -204,6 +204,81 @@ async function createLeaveRequest(req,res){
         return handleError(res,err,400)
     }
 }
+
+async function updateLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id"})
+        }
+        const existing = await LeaveRequest.findById(id)
+        if(!existing){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(req.user.role === 'employee' && existing.employee_id.toString() !== req.user.employee_id.toString()){
+            return res.status(403).json({success: false, message: "You are not authorized to update this leave request."})
+        }
+        if(existing.status !== "draft"){
+            return res.status(409).json({
+                success: false,
+                message: "Only draft requests can be edited. Cancel and create a new request instead."
+            })
+        }
+
+        const {leave_type_id, from_date, to_date, is_half_day, half_day_date, reason, document} = req.body
+
+        const updates = {}
+        if(leave_type_id !== undefined){
+            if(!isValidId(leave_type_id)){
+                return res.status(400).json({success: false, message: "Leave type not found or inactive."})
+            }
+            const leaveType = await LeaveType.findOne({
+                _id: leave_type_id,
+                is_active: true
+            })
+            if(!leaveType){
+                return res.status(404).json({success: false, message: "Leave type is not found or inactive"})
+            }
+            updates.leave_type_id = leave_type_id
+        }
+
+        if(reason !== undefined) updates.reason = reason
+        if(document !== undefined) updates.document = document
+
+        const nextIsHalfDay = is_half_day !== undefined ? is_half_day : existing.is_half_day
+        const datesChanged = from_date !== undefined || to_date !== undefined || half_day_date !== undefined || is_half_day !== undefined
+
+        if(datesChanged){
+            if(nextIsHalfDay){
+                const hdDate = half_day_date || existing.half_day_date
+                if(!hdDate){
+                    return res.status(400).json({success: false, message: "half_day_date is required for a half-day request."})
+                }
+                updates.is_half_day = true
+                updates.half_day_date = new Date(hdDate)
+                updates.from_date = updates.half_day_date
+                updates.to_date = updates.half_day_date
+            }else{
+                const newFrom = new Date(from_date || existing.from_date)
+                const newTo = new Date(to_date || existing.to_date)
+                if(newTo < newFrom){
+                    return res.status(400).json({success: false, message:"to_date cannot be before from_date."})
+                }
+                updates.is_half_day = false
+                updates.half_day_date = undefined
+                updates.from_date = newFrom
+                updates.to_date = newTo
+            }
+            updates.total_days = await computeTotalDays(updates.from_date, updates.to_date, updates.is_half_day)
+        }
+        const updated = await LeaveRequest.findByIdAndUpdate(id, updates, {new: true, runValidators: true})
+        return res.status(200).json({success: true, data: updated})
+    }catch(err){
+        return handleError(res, err, 400)
+    }
+}
+
 module.exports = {
-    createLeaveRequest
+    createLeaveRequest,
+    updateLeaveRequest
 }
