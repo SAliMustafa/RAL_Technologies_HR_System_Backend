@@ -338,8 +338,36 @@ async function approveLeaveRequest(req,res){
         return handleError(res,err,400)
     }
 }
+
+async function rejectLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        const {decision_note} = req.body
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        if(!decision_note){
+            return res.status(400).json({success: false, message: "decision_note is required when rejecting a request."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(leaveRequest.status !== 'pending'){
+            return res.status(409).json({success: false, message: "Only pending requests can be rejected."})
+        }
+        leaveRequest.status = 'rejected'
+        leaveRequest.decision_note = decision_note
+        await leaveRequest.save()
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
 module.exports = {
     createLeaveRequest,
     updateLeaveRequest,
-    submitLeaveRequest
+    submitLeaveRequest,
+    approveLeaveRequest,
+    rejectLeaveRequest
 }
