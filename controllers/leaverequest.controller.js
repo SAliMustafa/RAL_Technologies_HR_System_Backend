@@ -448,6 +448,27 @@ async function getLeaveRequestById(req,res){
         return handleError(res,err)
     }
 }
+
+async function deleteLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(leaveRequest.status !== 'draft'){
+            return res.status(409).json({success: false, message: "Only draft requests can be deleted. Use cancel for submitted requests."})
+        }
+        await LeaveRequest.findByIdAndDelete(id)
+        return res.status(200).json({success: true, message: "Draft leave request deleted."})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
+
 module.exports = {
     createLeaveRequest,
     updateLeaveRequest,
@@ -456,5 +477,6 @@ module.exports = {
     rejectLeaveRequest,
     cancelLeaveRequest,
     getAllLeaveRequests,
-    getLeaveRequestById
+    getLeaveRequestById,
+    deleteLeaveRequest
 }
