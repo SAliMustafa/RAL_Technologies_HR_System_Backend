@@ -364,10 +364,46 @@ async function rejectLeaveRequest(req,res){
         return handleError(res,err,400)
     }
 }
+
+async function cancelLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        const {decision_note} = req.body
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(['rejected', 'cancelled'].includes(leaveRequest.status)){
+            return res.status(409).json({success: false, message: "This request is already finalized."})
+        }
+        if(leaveRequest.status === 'approved'){
+            if(!decision_note){
+                return res.status(400).json({success: false, message: "decision_note is required when cancelling an approved request."})
+            }
+            const allocation = await findApplicableAllocation(leaveRequest.employee_id, leaveRequest.leave_type_id, leaveRequest.from_date)
+            if(allocation){
+                await adjustDaysTaken(allocation._id, -leaveRequest.total_days)
+            }
+            leaveRequest.decision_note = decision_note
+        } else if(decision_note){
+            leaveRequest.decision_note = decision_note
+        }
+
+        leaveRequest.status = 'cancelled'
+        await leaveRequest.save()
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
 module.exports = {
     createLeaveRequest,
     updateLeaveRequest,
     submitLeaveRequest,
     approveLeaveRequest,
-    rejectLeaveRequest
+    rejectLeaveRequest,
+    cancelLeaveRequest
 }
