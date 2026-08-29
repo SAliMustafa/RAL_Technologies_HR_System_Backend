@@ -8,32 +8,6 @@ const BH_IBAN_SHAPE_REGEX = /^BH\d{2}[A-Z]{4}[A-Z0-9]{14}$/
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function mod97(numericIban) {
-    let remainder = 0
-    for (const digit of numericIban) {
-        remainder = (remainder * 10 + Number(digit)) % 97
-    }
-    return remainder
-}
-
-// function isValidBahrainIban(rawIban){
-//     if(typeof rawIban !== 'string') return false
-//     const iban = rawIban.replace(/\s+/g, '').toUpperCase()
-
-//     if(iban.length !== 22) return false
-//     if(!BH_IBAN_SHAPE_REGEX.test(iban)) return false
-
-//     const rearranged = iban.slice(4) + iban.slice(0, 4)
-//     const numeric = rearranged
-//         .split('')
-//         .map((ch)=>{
-//             const code = ch.charCodeAt(0)
-//             return code >= 65 && code <= 90 ? String(code - 55) : ch
-//         })
-//         .join('')
-
-//         return mod97(numeric) === 1
-// }
 
 
 const employeeSchema = new mongoose.Schema(
@@ -81,21 +55,26 @@ const employeeSchema = new mongoose.Schema(
             type: Boolean,
             required: true
         },
-        department: {
-            type: String,
-            trim: true
-        },
-        job_title: {
-            type: String,
-            trim: true
+        department_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Department',
         },
         reports_to: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Employee'
         },
+        job_title: {
+            type: String,
+            trim: true
+        },
+
         date_of_joining: {
             type: Date,
             required: true
+        },
+        probation_extended_with_consent: {
+            type: Boolean,
+            default: false
         },
         probation_end_date: {
             type: Date,
@@ -110,10 +89,7 @@ const employeeSchema = new mongoose.Schema(
                 message: 'probation_end_date exceeds the allowed 3 months (6 with written consent).'
             }
         },
-        probation_extended_with_consent: {
-            type: Boolean,
-            default: false
-        },
+
         employment_type: {
             type: String,
             required: true,
@@ -140,7 +116,7 @@ const employeeSchema = new mongoose.Schema(
             required: true,
             trim: true,
             uppercase: true,
-            match: /^BH\d{2}[A-Z]{4}[A-Z0-9]{14}$/
+            match: BH_IBAN_SHAPE_REGEX
         },
         bank_name: {
             type: String,
