@@ -204,6 +204,279 @@ async function createLeaveRequest(req,res){
         return handleError(res,err,400)
     }
 }
+
+async function updateLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id"})
+        }
+        const existing = await LeaveRequest.findById(id)
+        if(!existing){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(req.user.role === 'employee' && existing.employee_id.toString() !== req.user.employee_id.toString()){
+            return res.status(403).json({success: false, message: "You are not authorized to update this leave request."})
+        }
+        if(existing.status !== "draft"){
+            return res.status(409).json({
+                success: false,
+                message: "Only draft requests can be edited. Cancel and create a new request instead."
+            })
+        }
+
+        const {leave_type_id, from_date, to_date, is_half_day, half_day_date, reason, document} = req.body
+
+        const updates = {}
+        if(leave_type_id !== undefined){
+            if(!isValidId(leave_type_id)){
+                return res.status(400).json({success: false, message: "Leave type not found or inactive."})
+            }
+            const leaveType = await LeaveType.findOne({
+                _id: leave_type_id,
+                is_active: true
+            })
+            if(!leaveType){
+                return res.status(404).json({success: false, message: "Leave type is not found or inactive"})
+            }
+            updates.leave_type_id = leave_type_id
+        }
+
+        if(reason !== undefined) updates.reason = reason
+        if(document !== undefined) updates.document = document
+
+        const nextIsHalfDay = is_half_day !== undefined ? is_half_day : existing.is_half_day
+        const datesChanged = from_date !== undefined || to_date !== undefined || half_day_date !== undefined || is_half_day !== undefined
+
+        if(datesChanged){
+            if(nextIsHalfDay){
+                const hdDate = half_day_date || existing.half_day_date
+                if(!hdDate){
+                    return res.status(400).json({success: false, message: "half_day_date is required for a half-day request."})
+                }
+                updates.is_half_day = true
+                updates.half_day_date = new Date(hdDate)
+                updates.from_date = updates.half_day_date
+                updates.to_date = updates.half_day_date
+            }else{
+                const newFrom = new Date(from_date || existing.from_date)
+                const newTo = new Date(to_date || existing.to_date)
+                if(newTo < newFrom){
+                    return res.status(400).json({success: false, message:"to_date cannot be before from_date."})
+                }
+                updates.is_half_day = false
+                updates.half_day_date = undefined
+                updates.from_date = newFrom
+                updates.to_date = newTo
+            }
+            updates.total_days = await computeTotalDays(updates.from_date, updates.to_date, updates.is_half_day)
+        }
+        const updated = await LeaveRequest.findByIdAndUpdate(id, updates, {new: true, runValidators: true})
+        return res.status(200).json({success: true, data: updated})
+    }catch(err){
+        return handleError(res, err, 400)
+    }
+}
+
+async function submitLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found"})
+        }
+        if(leaveRequest.status !== "draft"){
+            return res.status(409).json({success: false, message: 'Only draft requests can be submitted.'})
+        }
+        const [employee, leaveType] = await Promise.all([
+            Employee.findById(leaveRequest.employee_id),
+            LeaveType.findById(leaveRequest.leave_type_id)
+        ])
+
+        const {remaining} = await runSubmitChecks(employee, leaveType, {
+            from_date: leaveRequest.from_date,
+            to_date: leaveRequest.to_date,
+            total_days: leaveRequest.total_days,
+            document: leaveRequest.document
+        })
+
+        leaveRequest.status = 'pending'
+        leaveRequest.balance_at_request = remaining
+        await leaveRequest.save()
+
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
+
+async function approveLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(leaveRequest.status !== 'pending'){
+            return res.status(409).json({success: false, message: "Only pending requests can be approved."})
+        }
+        const allocation = await findApplicableAllocation(leaveRequest.employee_id, leaveRequest.leave_type_id, leaveRequest.from_date)
+        if(!allocation){
+            return res.status(409).json({success: false, message: "No matching allocation found to deduct from."})
+        }
+        await adjustDaysTaken(allocation._id, leaveRequest.total_days)
+        leaveRequest.status = 'approved'
+        await leaveRequest.save()
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
+
+async function rejectLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        const {decision_note} = req.body
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        if(!decision_note){
+            return res.status(400).json({success: false, message: "decision_note is required when rejecting a request."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(leaveRequest.status !== 'pending'){
+            return res.status(409).json({success: false, message: "Only pending requests can be rejected."})
+        }
+        leaveRequest.status = 'rejected'
+        leaveRequest.decision_note = decision_note
+        await leaveRequest.save()
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
+
+async function cancelLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        const {decision_note} = req.body
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(['rejected', 'cancelled'].includes(leaveRequest.status)){
+            return res.status(409).json({success: false, message: "This request is already finalized."})
+        }
+        if(leaveRequest.status === 'approved'){
+            if(!decision_note){
+                return res.status(400).json({success: false, message: "decision_note is required when cancelling an approved request."})
+            }
+            const allocation = await findApplicableAllocation(leaveRequest.employee_id, leaveRequest.leave_type_id, leaveRequest.from_date)
+            if(allocation){
+                await adjustDaysTaken(allocation._id, -leaveRequest.total_days)
+            }
+            leaveRequest.decision_note = decision_note
+        } else if(decision_note){
+            leaveRequest.decision_note = decision_note
+        }
+
+        leaveRequest.status = 'cancelled'
+        await leaveRequest.save()
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
+
+async function getAllLeaveRequests(req,res){
+    try{
+        const {employee_id, status} = req.query
+        const filter = {}
+        if(employee_id){
+            if(!isValidId(employee_id)){
+                return res.status(400).json({success: false, message: "Invalid employee id."})
+            }
+            filter.employee_id = employee_id
+        }   
+        if(status) filter.status = status
+        if(req.user){
+            if(req.user.role === 'employee') {filter.employee_id = req.user.employee_id}
+            else if(req.user.role === 'manager'){
+                filter.$or = [
+                    {approver_id: req.user.employee_id},
+                    {employee_id: req.user.employee_id}
+                ]
+            }
+        }
+        const requests = await LeaveRequest.find(filter)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+            .populate("approver_id", "employee_code name_en")
+            .sort({createdAt: -1})
+        return res.status(200).json({success: true, count: requests.length, data: requests})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
+
+async function getLeaveRequestById(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})        }   
+        const leaveRequest = await LeaveRequest.findById(id)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+            .populate("approver_id", "employee_code name_en")
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: 'Leave request not found'})
+        }
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
+
+async function deleteLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(leaveRequest.status !== 'draft'){
+            return res.status(409).json({success: false, message: "Only draft requests can be deleted. Use cancel for submitted requests."})
+        }
+        await LeaveRequest.findByIdAndDelete(id)
+        return res.status(200).json({success: true, message: "Draft leave request deleted."})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
+
 module.exports = {
-    createLeaveRequest
+    createLeaveRequest,
+    updateLeaveRequest,
+    submitLeaveRequest,
+    approveLeaveRequest,
+    rejectLeaveRequest,
+    cancelLeaveRequest,
+    getAllLeaveRequests,
+    getLeaveRequestById,
+    deleteLeaveRequest
 }
