@@ -14,6 +14,7 @@ const EmployeeDocumentRoutes =require("./routes/employeeDocument.routes")
 const employeeRoutes = require('./routes/employee.routes')
 const EmployeeDocumentRoutes =require("./routes/employeeDocument.routes")
 const EmployeeRoutes =require("./routes/employee.routes")
+const leaveRequestRoutes = require('./routes/leaveRequest.routes')
 // Middleware
 app.use(
     cors({
@@ -34,6 +35,7 @@ app.use('/documents', EmployeeDocumentRoutes)
 app.use('/employee', employeeRoutes)
 app.use('/documents', EmployeeDocumentRoutes)
 app.use('/Employees', EmployeeRoutes)
+app.use('/leave-request', leaveRequestRoutes)
 
 
 

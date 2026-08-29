@@ -67,6 +67,10 @@ const leaveRequestSchema = new mongoose.Schema(
 
     balance_at_request: {
       type: Number
+    },
+
+    decision_note: {
+      type: String
     }
   },
   { timestamps: true }
