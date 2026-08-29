@@ -55,7 +55,7 @@ async function createLeaveAllocation(req,res){
         return res.status(201).json(leaveAllocation)
         
     }catch(err){
-        res.status(500).json({message: err})
+        res.status(500).json({message: err.message})
     }
 }
 
@@ -97,12 +97,112 @@ async function getAllLeaveAllocations(req,res){
         return res.status(200).json({count: allocation.length, data: allocation})
 
     }catch(err){
-        console.log(err)
+        return res.status(500).json({message: err.message})
     }
+}
+
+async function getAllocationById(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({message: "Invalid allocation id."})
+        }
+
+        const allocation = await LeaveAllocation.findById(id)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+
+        if(!allocation){
+            return res.status(404).json({message: "Allocation not found"})
+        }
+        if(req.user.role === 'employee' && allocation.employee_id._id.toString() !== req.user.employee_id){
+            return res.status(403).json({ success: false, message: "Not authorized to view this allocation." });
+        }
+        return res.status(200).json(allocation)
+    }catch(err){
+        return res.status(500).json({message: err.message})
+    }
+}
+
+async function updateAllocation(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({message: "Invalid allocation id."})
+        }      
+        const {period_start, period_end, days_allocated, days_carried_forward} = req.body
+        if (period_start && period_end && new Date(period_end) <= new Date(period_start)) {
+            return res.status(400).json({message: "period_end must be after period_start." });
+        }          
+        const updates = {
+            ...(period_start !== undefined && {period_start}),
+            ...(period_end !== undefined && {period_end}),
+            ...(days_allocated !== undefined && {days_allocated}),
+            ...(days_carried_forward !== undefined && {days_carried_forward}),
+        }
+
+    const updated = await LeaveAllocation.findByIdAndUpdate(id, updates, {
+        new: true, 
+        runValidators: true
+    })
+
+    if(!updated){
+        return res.status(404).json({message: "Allocation not found"})
+    }
+
+    res.status(200).json(updated)
+    }catch(err){
+        res.status(500).json({message: err.message})
+    }
+}
+
+async function deleteAllocation(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({message: "Invalid allocation id."})
+        }
+        const allocation = await LeaveAllocation.findById(id)
+        if(!allocation){
+            return res.status(404).json({message: "Allocation not found"})
+        }
+        if(allocation.days_taken > 0){
+            return res.status(409).json({
+                message: "Cannot delete an allocation that already has days taken against it."
+            })
+        }
+        await LeaveAllocation.findByIdAndDelete(id)
+        return res.status(200).json({message: "Allocation deleted."})
+    }catch(err){
+        return res.status(500).json({message: err.message})
+    }
+}
+
+async function adjustDaysTaken(allocationId, deltaDays, session = null){
+    const allocation = await LeaveAllocation.findById(allocationId).session(session)
+    if(!allocation){
+        throw new Error("Allocation not found while adjusting days_taken.")
+    }
+    const newDaysTaken = allocation.days_taken + deltaDays
+    const maxAvailable = allocation.days_allocated + allocation.days_carried_forward
+    if(newDaysTaken < 0){
+        throw new Error("days_taken cannot go negative.")
+    }
+    if(newDaysTaken > maxAvailable){
+        throw new Error('Not enough remaining balance for this leave type.')
+    }
+
+    allocation.days_taken = newDaysTaken
+    await allocation.save({session})
+    return allocation
 }
 
 
 module.exports = {
     createLeaveAllocation,
-    getAllLeaveAllocations
+    getAllLeaveAllocations,
+    getAllocationById,
+    updateAllocation,
+    deleteAllocation,
+    adjustDaysTaken
 }
