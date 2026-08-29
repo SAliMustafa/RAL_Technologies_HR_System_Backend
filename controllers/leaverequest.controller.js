@@ -431,6 +431,23 @@ async function getAllLeaveRequests(req,res){
     }
 }
 
+async function getLeaveRequestById(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})        }   
+        const leaveRequest = await LeaveRequest.findById(id)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+            .populate("approver_id", "employee_code name_en")
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: 'Leave request not found'})
+        }
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
 module.exports = {
     createLeaveRequest,
     updateLeaveRequest,
@@ -438,5 +455,6 @@ module.exports = {
     approveLeaveRequest,
     rejectLeaveRequest,
     cancelLeaveRequest,
-    getAllLeaveRequests
+    getAllLeaveRequests,
+    getLeaveRequestById
 }
