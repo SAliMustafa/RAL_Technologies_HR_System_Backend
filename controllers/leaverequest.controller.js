@@ -278,6 +278,40 @@ async function updateLeaveRequest(req,res){
     }
 }
 
+async function submitLeaveRequest(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+        const leaveRequest = await LeaveRequest.findById(id)
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found"})
+        }
+        if(leaveRequest.status !== "draft"){
+            return res.status(409).json({success: false, message: 'Only draft requests can be submitted.'})
+        }
+        const [employee, leaveType] = await Promise.all([
+            Employee.findById(leaveRequest.employee_id),
+            LeaveType.findById(leaveRequest.leave_type_id)
+        ])
+
+        const {remaining} = await runSubmitChecks(employee, leaveType, {
+            from_date: leaveRequest.from_date,
+            to_date: leaveRequest.to_date,
+            total_days: leaveRequest.total_days,
+            document: leaveRequest.document
+        })
+
+        leaveRequest.status = 'pending'
+        leaveRequest.balance_at_request = remaining
+        await leaveRequest.save()
+
+        return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
 module.exports = {
     createLeaveRequest,
     updateLeaveRequest
