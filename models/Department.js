@@ -2,11 +2,7 @@ const mongoose = require('mongoose')
 
 const departmentSchema = new mongoose.Schema(
     {
-        company_id: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Company',
-            required: true
-        },
+        
         name: {
             type: String,
             uppercase: true,

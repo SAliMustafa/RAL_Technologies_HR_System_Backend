@@ -29,7 +29,6 @@ app.use('/auth',authRoutes)
 app.use('/departments', departmentRoutes)
 app.use('/leave', leaveTypeRoutes)
 app.use('/leave-allocation', leaveAllocationRoutes)
-app.use('/user', userRoutes)
 app.use('/documents', EmployeeDocumentRoutes)
 app.use('/Employees', EmployeeRoutes)
 
