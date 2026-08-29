@@ -399,11 +399,44 @@ async function cancelLeaveRequest(req,res){
         return handleError(res,err,400)
     }
 }
+
+async function getAllLeaveRequests(req,res){
+    try{
+        const {employee_id, status} = req.query
+        const filter = {}
+        if(employee_id){
+            if(!isValidId(employee_id)){
+                return res.status(400).json({success: false, message: "Invalid employee id."})
+            }
+            filter.employee_id = employee_id
+        }   
+        if(status) filter.status = status
+        if(req.user){
+            if(req.user.role === 'employee') {filter.employee_id = req.user.employee_id}
+            else if(req.user.role === 'manager'){
+                filter.$or = [
+                    {approver_id: req.user.employee_id},
+                    {employee_id: req.user.employee_id}
+                ]
+            }
+        }
+        const requests = await LeaveRequest.find(filter)
+            .populate("employee_id", "employee_code name_en")
+            .populate("leave_type_id", "leave_type_name")
+            .populate("approver_id", "employee_code name_en")
+            .sort({createdAt: -1})
+        return res.status(200).json({success: true, count: requests.length, data: requests})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
+
 module.exports = {
     createLeaveRequest,
     updateLeaveRequest,
     submitLeaveRequest,
     approveLeaveRequest,
     rejectLeaveRequest,
-    cancelLeaveRequest
+    cancelLeaveRequest,
+    getAllLeaveRequests
 }
