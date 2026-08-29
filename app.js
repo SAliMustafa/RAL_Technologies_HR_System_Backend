@@ -10,7 +10,6 @@ const authRoutes = require('./routes/auth.routes')
 const departmentRoutes = require('./routes/department.routes')
 const leaveTypeRoutes = require('./routes/leavetype.routes')
 const leaveAllocationRoutes = require('./routes/leaveallocation.routes')
-const userRoutes = require('./routes/user.routes')
 const EmployeeDocumentRoutes =require("./routes/employeeDocument.routes")
 const EmployeeRoutes =require("./routes/employee.routes")
 // Middleware
