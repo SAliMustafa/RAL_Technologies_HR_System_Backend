@@ -4,7 +4,7 @@ const LeaveType = require("../models/LeaveType");
 const LeaveAllocation = require("../models/LeaveAllocation");
 const Employee = require("../models/Employee");
 const Holiday = require("../models/Holiday");
-const { adjustDaysTaken } = require("./leaveAllocationController");
+const { adjustDaysTaken } = require("./leaveallocation.controller");
 
 const handleError = (res, err, fallbackStatus = 500) => {
   console.error(err);
@@ -74,7 +74,7 @@ const runSubmitChecks = async (employee, leaveType, {from_date, to_date, total_d
     if(leaveType.gender_restriction){
         const requiredGender = GENDER_RESTRICTION_MAP[leaveType.gender_restriction]
         if(requiredGender && employee.gender !== requiredGender) {
-            throw new Error(`This leave type is restricted to ${leaveType.gender_restriction} emplyees`)
+            throw new Error(`This leave type is restricted to ${leaveType.gender_restriction} employees`)
         }
     }
     if(leaveType.requires_document && !document){
@@ -96,7 +96,7 @@ const runSubmitChecks = async (employee, leaveType, {from_date, to_date, total_d
         }
     }
 
-    const overlap = await findOverlab(employee._id, from_date, to_date)
+    const overlap = await findOverlap(employee._id, from_date, to_date)
     if(overlap){
         throw new Error("This employee already has a pending or approved request that overlaps these dates.")
     }
@@ -111,6 +111,99 @@ const runSubmitChecks = async (employee, leaveType, {from_date, to_date, total_d
     return {allocation, remaining}
 
 }
-module.exports = {
 
+async function createLeaveRequest(req,res){
+    try{
+        const {
+            employee_id,
+            leave_type_id,
+            from_date, 
+            to_date,
+            is_half_day,
+            half_day_date,
+            reason,
+            document,
+            submit,
+        } = req.body
+
+        if(!employee_id || !leave_type_id || !from_date){
+            return res.status(400).json({
+                success: false,
+                message: "employee_id, leave_type_id, and from_date are required."
+            })
+        }
+        if(!isValidId(employee_id) || !isValidId(leave_type_id)){
+            return res.status(400).json({success: false, message: "Invalid employee_id or leave_type_id"})
+        }
+
+        const [employee, leaveType] = await Promise.all([
+            Employee.findById(employee_id),
+            LeaveType.findById(leave_type_id)
+        ])
+
+        if (!employee) {
+            return res.status(404).json({ success: false, message: "Employee not found." });
+            }
+        if (!leaveType || !leaveType.is_active) {
+            return res.status(404).json({ success: false, message: "Leave type not found or inactive." });
+        }
+
+        let finalFrom, finalTo, finalHalfDayDate
+        if(is_half_day){
+            if(!half_day_date){
+                return res.status(400).json({success: false, message: 'half_day_date is required for a half-day request.'})
+            }
+            finalFrom = finalTo = finalHalfDayDate = new Date(half_day_date)
+        } else {
+            if(!to_date){
+                return res.status(400).json({success: false, message: "to_date is required."})
+            }
+            finalFrom = new Date(from_date)
+            finalTo = new Date(to_date)
+            if(finalTo < finalFrom){
+                return res.status(400).json({success: false, message: "to_date cannot be before from_date."})
+            }
+        }
+        if(!employee.reports_to){
+            return res.status(400).json({
+                success: false,
+                message: "Employee has no manager assigned, cannot determine an approver."
+            })
+        }
+
+        const total_days = await computeTotalDays(finalFrom, finalTo, !!is_half_day)
+        const status = submit ? "pending" : "draft"
+        let balance_at_request
+
+        if (submit){
+            const {remaining} = await runSubmitChecks(employee, leaveType, {
+                from_date: finalFrom, 
+                to_date: finalTo, 
+                total_days,
+                document
+            })
+            balance_at_request = remaining
+        }
+
+        const leaveRequest = await LeaveRequest.create({
+            employee_id,
+            leave_type_id,
+            from_date: finalFrom,
+            to_date: finalTo,
+            is_half_day: !!is_half_day,
+            half_day_date: finalHalfDayDate,
+            total_days,
+            reason,
+            document,
+            approver_id: employee.reports_to,
+            status,
+            balance_at_request
+        })
+        return res.status(201).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err,400)
+    }
+}
+module.exports = {
+    createLeaveRequest
 }
