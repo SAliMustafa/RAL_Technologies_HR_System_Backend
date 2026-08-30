@@ -32,7 +32,7 @@ router.put(
 );
 
 // Update only employee status
-router.patch(
+router.put(
   "/:userId/status",
   verifyToken,
   verifyRole.verifyHrAdmin,
@@ -50,7 +50,7 @@ router.get(
 );
 
 // Update logged-in employee contact details
-router.patch(
+router.put(
   "/me/contact",
   verifyToken,
   updateMyContact

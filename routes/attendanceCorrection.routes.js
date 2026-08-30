@@ -7,8 +7,8 @@ const correctionController = require("../controllers/attendanceCorrection.contro
 router.post("/", verifyToken, verifyManager, correctionController.createCorrectionRequest)
 router.get("/", verifyToken, correctionController.getCorrectionRequests)
 router.get("/:id", verifyToken, validateObjectId, correctionController.getCorrectionById)
-router.patch("/:id/correct", verifyToken, verifyHrAdmin, validateObjectId, correctionController.correctByHr)
-router.patch("/:id/approve", verifyToken, verifyManager, validateObjectId, correctionController.approveCorrection)
-router.patch("/:id/reject", verifyToken, validateObjectId, correctionController.rejectCorrection)
+router.put("/:id/correct", verifyToken, verifyHrAdmin, validateObjectId, correctionController.correctByHr)
+router.put("/:id/approve", verifyToken, verifyManager, validateObjectId, correctionController.approveCorrection)
+router.put("/:id/reject", verifyToken, validateObjectId, correctionController.rejectCorrection)
 
 module.exports = router
