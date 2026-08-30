@@ -1,7 +1,7 @@
 const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
-const { logCreate, logUpdate } = require('../models/AuditLog')
+const { logCreate, logUpdate } = require('../utils/auditLog')
 
 async function createAttendance(req, res) {
     try {
@@ -147,7 +147,7 @@ async function updateAttendance(req, res) {
             ipAddress: req.ip
         })
 
-        return res.status(200).json(attendance)
+        return res.status(200).json( attendance)
     }
     catch (err) {
         console.log(err)
