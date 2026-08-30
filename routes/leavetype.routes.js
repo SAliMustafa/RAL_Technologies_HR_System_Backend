@@ -10,8 +10,8 @@ router.get("/", verifyToken, getAllLeaveTypes)
 
 router.get("/:id", verifyToken, validateObjectId, getLeaveTypeById)
 
-router.put("/:id", verifyToken, validateObjectId, verifyHrAdmin, updateLeaveType) 
+router.put("/:id", verifyToken, verifyHrAdmin, validateObjectId, updateLeaveType) 
 
-router.delete("/:id", verifyToken, validateObjectId, verifyHrAdmin, deactivateLeaveType)
+router.delete("/:id", verifyToken, verifyHrAdmin, validateObjectId, deactivateLeaveType)
 
 module.exports = router
