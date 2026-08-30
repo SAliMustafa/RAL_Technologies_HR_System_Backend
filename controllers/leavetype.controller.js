@@ -1,4 +1,5 @@
 const LeaveType = require('../models/LeaveType')
+const AuditLog = require('../models/AuditLog')
 
 const handleError = (res, err) => {
     console.error(err)
@@ -105,6 +106,41 @@ async function createLeaveType(req,res){
       gender_restriction,  
       next_leave_type_id: nextId      
     })
+
+        const auditFields = {
+            leave_type_name: leaveType.leave_type_name,
+            max_days_per_year: leaveType.max_days_per_year,
+            pay_fraction: leaveType.pay_fraction,
+            requires_service_months: leaveType.requires_service_months,
+            requires_document: leaveType.requires_document,
+            carry_forward: leaveType.carry_forward,
+            max_carry_forward: leaveType.max_carry_forward,
+            counts_toward_service: leaveType.counts_toward_service,
+            once_per_lifetime: leaveType.once_per_lifetime,
+            gender_restriction: leaveType.gender_restriction,
+            next_leave_type_id: leaveType.next_leave_type_id,
+            is_active: leaveType.is_active
+        }
+
+        const auditLogs = []
+        for(const [field_name, value] of Object.entries(auditFields)){
+            if(value !== undefined && value !== null){
+                auditLogs.push({
+                    table_name: 'LeaveType',
+                    record_id: leaveType._id.toString(),
+                    action: 'create',
+                    changed_by: req.user._id,
+                    field_name,
+                    old_value: null,
+                    new_value: value.toString(),
+                    ip_address: req.ip
+                })
+            }
+        }
+
+        if(auditLogs.length > 0){
+            await AuditLog.insertMany(auditLogs)
+        }
 
     return res.status(201).json(leaveType)
     } catch(err){
