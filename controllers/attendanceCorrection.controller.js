@@ -16,7 +16,7 @@ async function createCorrectionRequest(req, res) {
 
         const managed = await Employee.exists({
             _id: employee_id,
-            reports_to: user.employee.id
+            reports_to: user.employee_id
         })
 
         if (!managed) {
@@ -71,7 +71,7 @@ async function getCorrectionRequests(req, res) {
         if (status) filter.status = status
 
         const corrections = await AttendanceCorrection.find(filter).sort({ requested_at: -1 })
-        return res.status(200).json(correction)
+        return res.status(200).json(corrections)
     }
     catch (err) {
         console.log(err)
@@ -87,7 +87,7 @@ async function getCorrectionById(req, res) {
         if (!correction) {
             res.status(404).json({ message: 'Correction request not found.' })
         }
-        res.status(200).json(correction)
+        return res.status(200).json(correction)
     }
     catch (err) {
         console.log(err)
