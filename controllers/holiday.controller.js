@@ -97,3 +97,18 @@ async function updateHoliday(req, res) {
         return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
+
+async function deleteHoliday(req, res) {
+    try {
+        const holiday = await Holiday.findByIdAndDelete(req.params.id)
+
+        if (!holiday) {
+            return res.status(404).json({ message: 'Holiday not found.' })
+        }
+        return res.status(200).json({ message: 'Holiday deleted' })
+    }
+    catch (err) {
+        console.log(err)
+        return res.status(500).json({ message: 'Internal Server Error' })
+    }
+}
