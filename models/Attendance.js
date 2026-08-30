@@ -23,7 +23,6 @@ const attendanceSchema = new mongoose.Schema(
         "holiday",
         "weekly_off",
       ],
-      required: true,
     },
 
     in_time: {
