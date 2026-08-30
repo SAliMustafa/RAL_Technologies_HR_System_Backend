@@ -1,12 +1,11 @@
 const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
-const AuditLog = require('../models/AuditLog')
+const { logCreate, logUpdate } = require('../utils/auditLog')
 
 async function createAttendance(req, res) {
     try {
-        const employee_id = req.user._id
-        const { date, status, in_time, out_time } = req.body
+        const { employee_id, date, status, in_time, out_time } = req.body
 
         if (!employee_id || !date || !status) {
             return res.status(400).json({
@@ -22,11 +21,19 @@ async function createAttendance(req, res) {
             out_time
         })
 
+        logCreate({
+            tableName: 'attendance',
+            recordId: attendance._id,
+            userId: req.user._id,
+            data: { employee_id, date, status, in_time, out_time },
+            ipAddress: req.ip
+        })
+
         return res.status(201).json(attendance)
     }
     catch (err) {
         if (err.name === 'ValidationError') {
-            return res.status(400).json({ message: 'err.message' })
+            return res.status(400).json({ message: err.message })
         }
         if (err.code === 11000) {
             return res.status(409).json({
@@ -48,10 +55,10 @@ async function getAttendance(req, res) {
         const filter = {}
         const { employee_id, from_date, to_date, status } = req.query
 
-        if (user.role === employee) {
+        if (user.role === 'employee') {
             filter.employee_id = user.employee_id
         }
-        else if (user.role === 'employee') {
+        else if (user.role === 'manager') {
             const team = await Employee.find({ reports_to: user.employee_id }).select('_id')
             const teamIds = team.map((e) => e._id)
             filter.employee_id = { $in: teamIds }
@@ -130,7 +137,17 @@ async function updateAttendance(req, res) {
         if (!attendance) {
             return res.status(404).json({ message: 'Attendance record not found.' })
         }
-        return res.status(200).json({ attendance })
+
+        logUpdate({
+            tableName: 'attendance',
+            recordId: attendance._id,
+            userId: req.user._id,
+            before,
+            after: { status, in_time, out_time, is_late_entry, is_early_exit, is_incomplete },
+            ipAddress: req.ip
+        })
+
+        return res.status(200).json( attendance)
     }
     catch (err) {
         console.log(err)

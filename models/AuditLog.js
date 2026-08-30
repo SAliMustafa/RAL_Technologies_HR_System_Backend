@@ -68,4 +68,4 @@ const auditLogSchema = new mongoose.Schema(
 auditLogSchema.index({table_name: 1, record_id: 1})
 auditLogSchema.index({changed_at: -1})
 
-module.exports = mongoose.model("AuditLog", auditLogSchema);
+module.exports = mongoose.models.AuditLog || mongoose.model("AuditLog", auditLogSchema)

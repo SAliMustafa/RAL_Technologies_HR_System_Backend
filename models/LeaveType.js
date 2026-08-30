@@ -11,7 +11,8 @@ const leaveTypeSchema = new mongoose.Schema(
 
     max_days_per_year: {
       type: Number,
-      required: true
+      required: true,
+      min: 0
     },
 
     pay_fraction: {
@@ -23,7 +24,8 @@ const leaveTypeSchema = new mongoose.Schema(
 
     requires_service_months: {
       type: Number,
-      default: 0
+      default: 0,
+      min: 0
     },
 
     requires_document: {
@@ -37,7 +39,8 @@ const leaveTypeSchema = new mongoose.Schema(
     },
 
     max_carry_forward: {
-      type: Number
+      type: Number,
+      min: 0
     },
 
     counts_toward_service: {

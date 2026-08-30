@@ -2,7 +2,7 @@ const AttendanceCorrection = require('../models/AttendanceCorrection')
 const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
-
+const { logCreate, logUpdate } = require('../utils/auditLog')
 
 async function createCorrectionRequest(req, res) {
     try {
@@ -16,7 +16,7 @@ async function createCorrectionRequest(req, res) {
 
         const managed = await Employee.exists({
             _id: employee_id,
-            reports_to: user.employee.id
+            reports_to: user.employee_id
         })
 
         if (!managed) {
@@ -34,6 +34,15 @@ async function createCorrectionRequest(req, res) {
             requested_out_time,
             requested_status
         })
+
+        logCreate({
+            tableName: 'attendance_correction',
+            recordId: correction._id,
+            userId: req.user._id,
+            data: { employee_id, date, reason, requested_in_time, requested_out_time, requested_status },
+            ipAddress: req.ip
+        })
+
         return res.status(201).json(correction)
     }
     catch (err) {
@@ -62,7 +71,7 @@ async function getCorrectionRequests(req, res) {
         if (status) filter.status = status
 
         const corrections = await AttendanceCorrection.find(filter).sort({ requested_at: -1 })
-        return res.status(200).json(correction)
+        return res.status(200).json(corrections)
     }
     catch (err) {
         console.log(err)
@@ -78,7 +87,7 @@ async function getCorrectionById(req, res) {
         if (!correction) {
             res.status(404).json({ message: 'Correction request not found.' })
         }
-        res.status(200).json(correction)
+        return res.status(200).json(correction)
     }
     catch (err) {
         console.log(err)
@@ -117,10 +126,33 @@ async function correctByHr(req, res) {
             { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
         )
 
+        logUpdate({
+            tableName: 'attendance',
+            recordId: correction._id,
+            userId: req.user._id,
+            before: beforeAttendance || {},
+            after: {
+                status: correction.requested_status,
+                in_time: correction.requested_in_time,
+                out_time: correction.requested_out_time,
+            },
+            reason: correction.reason,
+            ipAddress: req.ip
+        })
+
         correction.status = "corrected_by_hr"
         correction.corrected_by = req.user._id
         correction.corrected_at = new Date()
         await correction.save()
+
+        logUpdate({
+            tableName: 'attendance_correction',
+            recordId: correction._id,
+            userId: req.user._id,
+            before: beforeCorrection,
+            after: { status: correction.status, corrected_by: correction.corrected_by, corrected_at: correction.corrected_at },
+            ipAddress: req.ip,
+        })
 
         return res.status(200).json(correction)
     }
@@ -180,7 +212,7 @@ async function rejectCorrection(req, res) {
                 message: `Cannot reject a request in "${correction.status}" status.`
             })
         }
-        
+
         correction.status = 'rejected'
         correction.rejected_at = new Date()
         await correction.save()
@@ -188,17 +220,17 @@ async function rejectCorrection(req, res) {
         return res.status(200).json(correction)
     }
 
-    catch(err){
+    catch (err) {
         console.log(err)
-        return res.status(500).json({message: 'Internal Server Error'})
+        return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
 
 module.exports = {
-  createCorrectionRequest,
-  getCorrectionRequests,
-  getCorrectionById,
-  correctByHr,
-  approveCorrection,
-  rejectCorrection,
+    createCorrectionRequest,
+    getCorrectionRequests,
+    getCorrectionById,
+    correctByHr,
+    approveCorrection,
+    rejectCorrection,
 }
