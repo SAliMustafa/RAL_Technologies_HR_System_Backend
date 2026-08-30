@@ -49,6 +49,22 @@ async function getHolidays(req, res) {
     }
     catch (err) {
         console.log(err)
-        return res.status(500).json({ message: "Internal Server Error" });
+        return res.status(500).json({ message: 'Internal Server Error' })
+    }
+}
+
+async function getHolidayById(req, res) {
+    try {
+        const holiday = await Holiday.findById(req.params.id)
+
+        if (!holiday) {
+            return res.status(404).json({ message: 'Holiday not found.' })
+        }
+
+        return res.status(200).json(holiday)
+    }
+    catch (err) {
+        console.log(err);
+        return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
