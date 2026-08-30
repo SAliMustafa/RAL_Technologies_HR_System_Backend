@@ -145,6 +145,15 @@ async function correctByHr(req, res) {
         correction.corrected_at = new Date()
         await correction.save()
 
+        logUpdate({
+            tableName: 'attendance_correction',
+            recordId: correction._id,
+            userId: req.user._id,
+            before: beforeCorrection,
+            after: { status: correction.status, corrected_by: correction.corrected_by, corrected_at: correction.corrected_at },
+            ipAddress: req.ip,
+        })
+
         return res.status(200).json(correction)
     }
 
