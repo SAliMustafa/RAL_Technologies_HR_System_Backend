@@ -33,7 +33,7 @@ async function createAttendance(req, res) {
     }
     catch (err) {
         if (err.name === 'ValidationError') {
-            return res.status(400).json({ message: 'err.message' })
+            return res.status(400).json({ message: err.message })
         }
         if (err.code === 11000) {
             return res.status(409).json({
@@ -55,10 +55,10 @@ async function getAttendance(req, res) {
         const filter = {}
         const { employee_id, from_date, to_date, status } = req.query
 
-        if (user.role === employee) {
+        if (user.role === 'employee') {
             filter.employee_id = user.employee_id
         }
-        else if (user.role === 'employee') {
+        else if (user.role === 'manager') {
             const team = await Employee.find({ reports_to: user.employee_id }).select('_id')
             const teamIds = team.map((e) => e._id)
             filter.employee_id = { $in: teamIds }
