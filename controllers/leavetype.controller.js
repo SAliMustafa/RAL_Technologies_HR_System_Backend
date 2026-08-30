@@ -1,4 +1,3 @@
-const mongoose = require('mongoose')
 const LeaveType = require('../models/LeaveType')
 
 const handleError = (res, err) => {
@@ -8,20 +7,34 @@ const handleError = (res, err) => {
         return res.status(409).json({message: 'A leave type with this name already exists.'})
     }
 
+    if(err.status){
+        return res.status(err.status).json({
+            message: err.message
+        })
+    }
+
+    if(err.name === 'ValidationError' || err.name == 'CastError')
+
     return res.status(500).json({message: 'Internal server error.'})
+}
+
+const createHttpError = (status, message) => {
+    const error = new Error(message)
+    error.status = status
+    return error
 }
 
 const validateNextLeaveType = async(nextId, currentId = null)=>{
     if(!nextId) return null
 
     if (currentId && nextId.toString() === currentId.toString()){
-        throw new Error('A leave typee cannot point to itself as the next type.')
+        throw createHttpError(400, 'A leave type cannot point to itself as the next type.')
     }
 
     const exists = await LeaveType.findById(nextId)
 
     if(!exists) {
-        throw new Error('next_leave_type_id does not match an existing leave type.')
+        throw createHttpError(400, 'next_leave_type_id does not match an existing leave type.')
     }
     return nextId
 }
@@ -42,7 +55,7 @@ async function createLeaveType(req,res){
       next_leave_type_id,
     } = req.body
     
-    if (!leave_type_name || max_days_per_year === undefined){
+    if (!leave_type_name || max_days_per_year === undefined || pay_fraction === undefined){
         return res.status(400).json({message: "leave_type_name and max_days_per_year are required."})
     }
 
@@ -58,8 +71,7 @@ async function createLeaveType(req,res){
       max_carry_forward,
       counts_toward_service,
       once_per_lifetime,
-      gender_restriction,
-      next_leave_type_id,  
+      gender_restriction,  
       next_leave_type_id: nextId      
     })
 
@@ -71,7 +83,7 @@ async function createLeaveType(req,res){
 
 async function getAllLeaveTypes(req,res){
     try{
-        const includeInactive = await req.query.includeInactive === 'true'
+        const includeInactive = req.query.includeInactive === 'true'
         const filter = includeInactive ? {} : {is_active: true}
         const leaveType = await LeaveType.find(filter).populate("next_leave_type_id", "leave_type_name").sort({leave_type_name: 1})
     
@@ -97,7 +109,7 @@ async function getLeaveTypeById(req,res){
     }
 }
 
-async function unpdateLeaveType(req,res){
+async function updateLeaveType(req,res){
     try{
         const {id} = req.params
         const {
@@ -114,7 +126,7 @@ async function unpdateLeaveType(req,res){
             next_leave_type_id,  
             } = req.body
 
-        if (req.body.next_leave_type_id === undefined){
+        if (req.body.next_leave_type_id !== undefined){
             await validateNextLeaveType(next_leave_type_id, id)
         }
 
@@ -169,6 +181,6 @@ module.exports = {
     createLeaveType,
     getAllLeaveTypes,
     getLeaveTypeById,
-    unpdateLeaveType,
+    updateLeaveType,
     deactivateLeaveType
 }
