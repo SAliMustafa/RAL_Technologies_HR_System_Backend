@@ -38,43 +38,43 @@ async function createAttendance(req, res) {
 }
 
 
-async function getAttendance(req, res) {
-    try {
-        const user = await User.findById(req.user._id)
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' })
-        }
+// async function getAttendance(req, res) {
+//     try {
+//         const user = await User.findById(req.user._id)
+//         if (!user) {
+//             return res.status(404).json({ message: 'User not found.' })
+//         }
 
-        const filter = {}
-        const { employee_id, from_date, to_date, status } = req.query
+//         const filter = {}
+//         const { employee_id, from_date, to_date, status } = req.query
 
-        if (user.role === employee) {
-            filter.employee_id = user.employee_id
-        }
-        else if (user.role === 'employee') {
-            const team = await Employee.find({ reports_to: user.employee_id }).select('_id')
-            const teamIds = team.map((e) => e._id)
-            filter.employee_id = { $in: teamIds }
-        } else if (employee_id) {
-            filter.employee_id = employee_id
-        }
+//         if (user.role === employee) {
+//             filter.employee_id = user.employee_id
+//         }
+//         else if (user.role === 'employee') {
+//             const team = await Employee.find({ reports_to: user.employee_id }).select('_id')
+//             const teamIds = team.map((e) => e._id)
+//             filter.employee_id = { $in: teamIds }
+//         } else if (employee_id) {
+//             filter.employee_id = employee_id
+//         }
 
-        if (from_date || to_date) {
-            filter.date = {}
-            if (from_date) filter.date.$gte = new Date(from_date)
-            if (to_date) filter.date.$lte = new Date(to_date)
-        }
+//         if (from_date || to_date) {
+//             filter.date = {}
+//             if (from_date) filter.date.$gte = new Date(from_date)
+//             if (to_date) filter.date.$lte = new Date(to_date)
+//         }
 
-        if (status) filter.status = status;
+//         if (status) filter.status = status;
 
-        const attendance = await Attendance.find(filter).sort({ date: -1 })
-        return res.status(200).json(attendance)
-    }
-    catch (err) {
-        console.log(err);
-        return res.status(500).json({ message: 'Internal Server Error' });
-    }
-}
+//         const attendance = await Attendance.find(filter).sort({ date: -1 })
+//         return res.status(200).json(attendance)
+//     }
+//     catch (err) {
+//         console.log(err);
+//         return res.status(500).json({ message: 'Internal Server Error' });
+//     }
+// }
 
 
 async function getAttendanceById(req, res) {
@@ -143,10 +143,141 @@ async function updateAttendance(req, res) {
 }
 
 
+async function getMyAttendance(req, res) {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+
+    const attendance = await Attendance.find({employee_id: user.employeeId}).sort({ date: -1 });
+
+    return res.status(200).json(attendance);
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
+async function getTodayAttendance(req, res) {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await Attendance.findOne({
+      employee_id: user.employeeId,
+      date: today
+    });
+
+    if (!attendance) {
+      return res.status(404).json({
+        message: "No attendance found for today"
+      });
+    }
+
+    return res.status(200).json(attendance);
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
+async function getEmployeeAttendance(req, res) {
+  try {
+    const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        error: "Invalid user id"
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found"
+      });
+    }
+
+    if (!user.employeeId) {
+      return res.status(404).json({
+        error: "Employee not found"
+      });
+    }
+
+    const attendance = await Attendance.find({
+      employee_id: user.employeeId
+    }).sort({ date: -1 });
+
+    return res.status(200).json(attendance);
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
+async function getAllAttendance(req, res) {
+  try {
+
+    const {status,employee_id,date} = req.query;
+
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (employee_id) {
+      filter.employee_id = employee_id;
+    }
+
+    if (date) {
+      const attendanceDate = new Date(date);
+      attendanceDate.setHours(0, 0, 0, 0);
+
+      filter.date = attendanceDate;
+    }
+
+    const attendance = await Attendance.find(filter)
+      .populate(
+        "employee_id",
+        "employee_code name_en name_ar department_id job_title"
+      )
+      .sort({ date: -1 });
+
+    return res.status(200).json(attendance);
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
+
 
 module.exports = {
     createAttendance,
-    getAttendance,
+    getMyAttendance,
+    getTodayAttendance,
     getAttendanceById,
     updateAttendance,
 }
