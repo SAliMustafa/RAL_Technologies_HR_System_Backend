@@ -68,3 +68,32 @@ async function getHolidayById(req, res) {
         return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
+
+async function updateHoliday(req, res) {
+    try {
+        const { date, description, is_confirmed } = req.body
+
+        const holiday = await Holiday.findByIdAndUpdate(
+            req.params.id,
+            { date, description, is_confirmed },
+            { new: true, runValidators: true }
+        )
+
+        if (!holiday) {
+            return res.status(404).json({ message: 'Holiday not found.' })
+        }
+        return res.status(200).json(holiday)
+    }
+    catch (err) {
+        console.log(err)
+        if (err.name === "ValidationError") {
+            return res.status(400).json({ message: err.message })
+        }
+        if (err.code === 11000) {
+            return res.status(409).json({
+                message: 'A holiday already exists on this date.'
+            });
+        }
+        return res.status(500).json({ message: 'Internal Server Error' })
+    }
+}
