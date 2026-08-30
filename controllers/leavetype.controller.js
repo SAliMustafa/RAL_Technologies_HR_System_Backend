@@ -13,7 +13,9 @@ const handleError = (res, err) => {
         })
     }
 
-    if(err.name === 'ValidationError' || err.name == 'CastError')
+    if(err.name === 'ValidationError' || err.name === 'CastError'){
+        return res.status(400).json({message: err.message})
+    }
 
     return res.status(500).json({message: 'Internal server error.'})
 }
@@ -27,16 +29,45 @@ const createHttpError = (status, message) => {
 const validateNextLeaveType = async(nextId, currentId = null)=>{
     if(!nextId) return null
 
-    if (currentId && nextId.toString() === currentId.toString()){
-        throw createHttpError(400, 'A leave type cannot point to itself as the next type.')
+    let nextLeaveType
+
+    try{
+        nextLeaveType = await LeaveType.findById(nextId).select('_id next_leave_type_id')
+    }catch(err){
+        if(err.name === 'CastError'){
+            throw createHttpError(400, 'next_leave_type_id must be a valid ID.')
+        }
+    throw err
     }
 
-    const exists = await LeaveType.findById(nextId)
-
-    if(!exists) {
+    if(!nextLeaveType){
         throw createHttpError(400, 'next_leave_type_id does not match an existing leave type.')
     }
-    return nextId
+    if(!currentId) return nextId
+        const currentIdString = currentId.toString()
+        const visited = new Set()
+
+        let current = nextLeaveType
+
+        while(current){
+            const currentChainId = current._id.toString()
+            if(currentChainId === currentIdString){
+                throw createHttpError(400, 'The selected next leave type would create a circular chain')
+            }
+            if(visited.has(currentChainId)){
+                throw createHttpError(400, 'The selected next leave type already has a circular chain.')
+            }
+            visited.add(currentChainId)
+            if(!current.next_leave_type_id){
+                break
+            }
+            current = await LeaveType.findById(current.next_leave_type_id)
+                .select('_id next_leave_type_id')
+                if(!current){
+                    throw createHttpError(400, 'The selected next leave type contains a broken chain.')
+                }
+        }
+        return nextId
 }
 
 async function createLeaveType(req,res){
@@ -56,7 +87,7 @@ async function createLeaveType(req,res){
     } = req.body
     
     if (!leave_type_name || max_days_per_year === undefined || pay_fraction === undefined){
-        return res.status(400).json({message: "leave_type_name and max_days_per_year are required."})
+        return res.status(400).json({message: "leave_type_name, max_days_per_year and pay_fraction are required."})
     }
 
     const nextId = await validateNextLeaveType(next_leave_type_id)
