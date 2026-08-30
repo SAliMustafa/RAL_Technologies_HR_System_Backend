@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 
 const holidaySchema = new mongoose.Schema(
   {
-    holiday_list_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "HolidayList",
-      required: true
-    },
 
     date: {
       type: Date,
