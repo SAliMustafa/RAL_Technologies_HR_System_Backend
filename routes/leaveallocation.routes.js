@@ -4,14 +4,14 @@ const validateObjectId = require('../middleware/validateObjectId')
 const {verifyHrAdmin} = require('../middleware/verifyRole')
 const {createLeaveAllocation, getAllLeaveAllocations, getAllocationById, updateAllocation, deleteAllocation} = require('../controllers/leaveallocation.controller')
 
-router.post("/", verifyToken, createLeaveAllocation)
+router.post("/", verifyToken,verifyHrAdmin, createLeaveAllocation)
 
 router.get("/", verifyToken, getAllLeaveAllocations)
 
 router.get("/:id", verifyToken, validateObjectId, getAllocationById)
 
-router.put("/:id", verifyToken, validateObjectId, updateAllocation) 
+router.put("/:id", verifyToken, verifyHrAdmin, validateObjectId, updateAllocation) 
 
-router.delete("/:id", verifyToken, validateObjectId, deleteAllocation)
+router.delete("/:id", verifyToken, verifyHrAdmin, validateObjectId, deleteAllocation)
 
 module.exports = router
