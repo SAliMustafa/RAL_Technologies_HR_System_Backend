@@ -1,5 +1,5 @@
 const Department = require('../models/Department')
-const { logCreate, logUpdate, logDelete } = require("../utils/auditLog")
+const { logCreate, logUpdate } = require("../utils/auditLog")
 
 async function createDepartment(req, res) {
     try {

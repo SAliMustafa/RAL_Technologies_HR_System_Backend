@@ -1,12 +1,11 @@
 const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
-const AuditLog = require('../models/AuditLog')
+const { logCreate, logUpdate } = require('../models/AuditLog')
 
 async function createAttendance(req, res) {
     try {
-        const employee_id = req.user._id
-        const { date, status, in_time, out_time } = req.body
+        const { employee_id, date, status, in_time, out_time } = req.body
 
         if (!employee_id || !date || !status) {
             return res.status(400).json({
@@ -20,6 +19,14 @@ async function createAttendance(req, res) {
             status,
             in_time,
             out_time
+        })
+
+        logCreate({
+            tableName: 'attendance',
+            recordId: attendance._id,
+            userId: req.user._id,
+            data: { employee_id, date, status, in_time, out_time },
+            ipAddress: req.ip
         })
 
         return res.status(201).json(attendance)
