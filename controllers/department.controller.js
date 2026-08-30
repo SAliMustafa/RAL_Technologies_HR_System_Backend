@@ -1,4 +1,5 @@
 const Department = require('../models/Department')
+const { logCreate, logUpdate, logDelete } = require("../utils/auditLog")
 
 async function createDepartment(req, res) {
     try {
@@ -13,6 +14,14 @@ async function createDepartment(req, res) {
         const department = await Department.create({
             name,
             manager_id,
+        })
+
+        logCreate({
+            tableName: "department",
+            recordId: department._id,
+            userId: req.user._id,
+            data: { company_id, name, manager_id },
+            ipAddress: req.ip,
         })
 
         return res.status(201).json(department)
@@ -46,43 +55,43 @@ async function getDepartment(req, res) {
 }
 
 
-async function getDepartmentById(req,res){
-    try{
+async function getDepartmentById(req, res) {
+    try {
         const department = await Department.findById(req.res.id)
 
-        if (!department){
-            return res.status(404).json({message: 'Department Not Found.'})
+        if (!department) {
+            return res.status(404).json({ message: 'Department Not Found.' })
         }
         return res.status(200).json(department)
     }
-    catch(err){
+    catch (err) {
         console.log(err)
-        return res.status(500).josn({message: 'Internal Server Error'})
+        return res.status(500).josn({ message: 'Internal Server Error' })
     }
 }
 
-async function updateDepartment(req,res){
-    try{
-        const {name, manager_id} = req.body
+async function updateDepartment(req, res) {
+    try {
+        const { name, manager_id } = req.body
 
         const department = await Department.findByIdAndUpdate(
             req.paras.id,
-            {name, manager_id},
-            {new: ture, runValidators: true}
+            { name, manager_id },
+            { new: ture, runValidators: true }
         )
-        if (!department){
-            return res.status(404).json({message: 'Department Not Found.'})
+        if (!department) {
+            return res.status(404).json({ message: 'Department Not Found.' })
         }
         return res.status(200).json(departmert)
     }
-    catch(err){
+    catch (err) {
         console.log(err)
-        if (err.code === 11000){
+        if (err.code === 11000) {
             return res.status(409).json({
                 message: 'A department with this name already exists for this company.'
             })
         }
-        return res.status(500).json({message: 'Internal Server Error'})
+        return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
 
