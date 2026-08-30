@@ -147,7 +147,7 @@ async function updateAttendance(req, res) {
             ipAddress: req.ip
         })
 
-        return res.status(200).json({ attendance })
+        return res.status(200).json(attendance)
     }
     catch (err) {
         console.log(err)

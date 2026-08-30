@@ -2,7 +2,7 @@ const AttendanceCorrection = require('../models/AttendanceCorrection')
 const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
-
+const { logCreate, logUpdate } = require('../utils/auditLog')
 
 async function createCorrectionRequest(req, res) {
     try {
@@ -34,6 +34,15 @@ async function createCorrectionRequest(req, res) {
             requested_out_time,
             requested_status
         })
+
+        logCreate({
+            tableName: 'attendance_correction',
+            recordId: correction._id,
+            userId: req.user._id,
+            data: { employee_id, date, reason, requested_in_time, requested_out_time, requested_status },
+            ipAddress: req.ip
+        })
+
         return res.status(201).json(correction)
     }
     catch (err) {
@@ -180,7 +189,7 @@ async function rejectCorrection(req, res) {
                 message: `Cannot reject a request in "${correction.status}" status.`
             })
         }
-        
+
         correction.status = 'rejected'
         correction.rejected_at = new Date()
         await correction.save()
@@ -188,17 +197,17 @@ async function rejectCorrection(req, res) {
         return res.status(200).json(correction)
     }
 
-    catch(err){
+    catch (err) {
         console.log(err)
-        return res.status(500).json({message: 'Internal Server Error'})
+        return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
 
 module.exports = {
-  createCorrectionRequest,
-  getCorrectionRequests,
-  getCorrectionById,
-  correctByHr,
-  approveCorrection,
-  rejectCorrection,
+    createCorrectionRequest,
+    getCorrectionRequests,
+    getCorrectionById,
+    correctByHr,
+    approveCorrection,
+    rejectCorrection,
 }
