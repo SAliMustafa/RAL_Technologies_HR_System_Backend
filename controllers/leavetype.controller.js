@@ -179,6 +179,10 @@ async function getLeaveTypeById(req,res){
 async function updateLeaveType(req,res){
     try{
         const {id} = req.params
+        const existingLeaveType = await LeaveType.findById(id)
+        if(!existingLeaveType){
+            return res.status(404).json({success: false, message: "Leave type not found."})
+        }
         const {
             leave_type_name,
             max_days_per_year,
@@ -219,7 +223,37 @@ async function updateLeaveType(req,res){
             return res.status(404).json({message: 'Leave type not found.'})
         }
 
-        res.status(200).json(updated)
+        const auditLogs = []
+        for (const field_name of Object.keys(updates)){
+            const oldValue = 
+                existingLeaveType[field_name] === undefined || 
+                existingLeaveType[field_name] === null
+                ? ''
+                : existingLeaveType[field_name].toString()
+            const newValue = 
+                updated[field_name] === undefined ||
+                updated[field_name] === null
+                ? ''
+                : updated[field_name].toString()
+            if(oldValue !== newValue){
+                auditLogs.push({
+                    table_name: 'LeaveType',
+                    record_id: updated._id.toString(),
+                    action: 'update',
+                    changed_by: req.user._id,
+                    field_name,
+                    old_value: oldValue,
+                    new_value: newValue,
+                    ip_address: req.ip
+                })
+            }
+        }
+
+        if(auditLogs.length>0){
+            await AuditLog.insertMany(auditLogs)
+        }
+
+        return res.status(200).json(updated)
 
     }catch(err){
         return handleError(res, err)
