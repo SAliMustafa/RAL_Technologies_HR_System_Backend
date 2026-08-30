@@ -13,6 +13,14 @@ async function createHoliday(req, res) {
 
         const holiday = await Holiday.create({ date, description, is_confirmed })
 
+        logCreate({
+            tableName: "holiday",
+            recordId: holiday._id,
+            userId: req.user._id,
+            data: { date, description, is_confirmed },
+            ipAddress: req.ip
+        })
+
         return res.status(201).json(holiday)
     }
     catch (err) {
@@ -114,9 +122,9 @@ async function deleteHoliday(req, res) {
 }
 
 module.exports = {
-  createHoliday,
-  getHolidays,
-  getHolidayById,
-  updateHoliday,
-  deleteHoliday
+    createHoliday,
+    getHolidays,
+    getHolidayById,
+    updateHoliday,
+    deleteHoliday
 }
