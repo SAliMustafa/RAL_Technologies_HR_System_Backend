@@ -2,79 +2,7 @@ const Attendance = require('../models/Attendance')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
 const AuditLog = require('../models/AuditLog')
-
-async function createAttendance(req, res) {
-    try {
-        const employee_id = req.user._id
-        const { date, status, in_time, out_time } = req.body
-
-        if (!employee_id || !date || !status) {
-            return res.status(400).json({
-                message: 'employee_id, date and status are required.'
-            })
-        }
-
-        const attendance = await Attendance.create({
-            employee_id,
-            date,
-            status,
-            in_time,
-            out_time
-        })
-
-        return res.status(201).json(attendance)
-    }
-    catch (err) {
-        if (err.name === 'ValidationError') {
-            return res.status(400).json({ message: 'err.message' })
-        }
-        if (err.code === 11000) {
-            return res.status(409).json({
-                message: 'An attendance record already exists for this employee on this date.'
-            })
-        }
-        return res.status(500).json({ message: 'Internal Server Error' })
-    }
-}
-
-
-// async function getAttendance(req, res) {
-//     try {
-//         const user = await User.findById(req.user._id)
-//         if (!user) {
-//             return res.status(404).json({ message: 'User not found.' })
-//         }
-
-//         const filter = {}
-//         const { employee_id, from_date, to_date, status } = req.query
-
-//         if (user.role === employee) {
-//             filter.employee_id = user.employee_id
-//         }
-//         else if (user.role === 'employee') {
-//             const team = await Employee.find({ reports_to: user.employee_id }).select('_id')
-//             const teamIds = team.map((e) => e._id)
-//             filter.employee_id = { $in: teamIds }
-//         } else if (employee_id) {
-//             filter.employee_id = employee_id
-//         }
-
-//         if (from_date || to_date) {
-//             filter.date = {}
-//             if (from_date) filter.date.$gte = new Date(from_date)
-//             if (to_date) filter.date.$lte = new Date(to_date)
-//         }
-
-//         if (status) filter.status = status;
-
-//         const attendance = await Attendance.find(filter).sort({ date: -1 })
-//         return res.status(200).json(attendance)
-//     }
-//     catch (err) {
-//         console.log(err);
-//         return res.status(500).json({ message: 'Internal Server Error' });
-//     }
-// }
+const mongoose = require("mongoose");
 
 
 async function getAttendanceById(req, res) {
@@ -108,38 +36,128 @@ async function getAttendanceById(req, res) {
     }
 }
 
-
 async function updateAttendance(req, res) {
-    try {
-        const { status, in_time, out_time, is_late_entry, is_early_exit, is_incomplete } = req.body
+  try {
+    const { attendanceid } = req.params;
 
-        const attendance = await Attendance.findByIdAndUpdate(
-            req.params.id,
-            {
-                status,
-                in_time,
-                out_time,
-                is_late_entry,
-                is_early_exit,
-                is_incomplete,
-                is_corrected: true,
-                corrected_by: req.user._id,
-            }, { new: true, runValidators: true }
-        )
+    const {
+      status,
+      in_time,
+      out_time,
+      is_late_entry,
+      is_early_exit,
+      is_incomplete,
+      correction_reason
+    } = req.body;
 
-        if (!attendance) {
-            return res.status(404).json({ message: 'Attendance record not found.' })
-        }
-        return res.status(200).json({ attendance })
+    const attendance = await Attendance.findById(attendanceid);
+
+    if (!attendance) {
+      return res.status(404).json({
+        message: "Attendance record not found."
+      });
     }
-    catch (err) {
-        console.log(err)
-        if (err.name === 'ValidationError') {
-            return res.status(400).json({ message: err.message })
-        }
 
-        return res.status(500).json({ message: 'Internal Server Error' })
+
+
+    // if (attendance.locked) {
+    //   return res.status(403).json({
+    //     message: "This attendance is locked and cannot be updated."
+    //   });
+    // }
+
+
+    if (!correction_reason) {
+      return res.status(400).json({
+        message: "Correction reason is required."
+      });
     }
+
+
+    if (
+      status &&
+      ![
+        "Present",
+        "Absent",
+        "Half Day",
+        "On Leave",
+        "Holiday",
+        "Weekly Off"
+      ].includes(status)
+    ) {
+      return res.status(400).json({
+        message: "Invalid attendance status."
+      });
+    }
+
+    const allowedFields = [
+      "status",
+      "in_time",
+      "out_time",
+      "is_late_entry",
+      "is_early_exit",
+      "is_incomplete"
+    ];
+
+    const auditLogs = [];
+
+  
+
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+
+        const oldValue = attendance[field];
+        const newValue = req.body[field];
+
+        if (String(oldValue ?? "") !== String(newValue ?? "")) {
+
+          auditLogs.push({
+            table_name: "Attendance",
+            record_id: attendance._id.toString(),
+            action: "correct",
+            changed_by: req.user._id,
+            field_name: field,
+            old_value: String(oldValue ?? ""),
+            new_value: String(newValue ?? ""),
+            reason: correction_reason,
+            ip_address: req.ip
+          });
+
+          attendance[field] = newValue;
+        }
+      }
+    }
+
+   
+
+    attendance.is_corrected = true;
+    attendance.corrected_by = req.user._id;
+    attendance.correction_reason = correction_reason;
+
+    await attendance.save();
+
+    if (auditLogs.length > 0) {
+      await AuditLog.insertMany(auditLogs);
+    }
+
+    return res.status(200).json({
+      message: "Attendance updated successfully.",
+      attendance
+    });
+
+  } catch (err) {
+    console.log(err);
+
+    if (err.name === "ValidationError") {
+      return res.status(400).json({
+        message: err.message
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
+  }
 }
 
 
@@ -193,6 +211,72 @@ async function getTodayAttendance(req, res) {
   }
 }
 
+
+async function getTeamAttendance(req, res) {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+
+   
+
+    const managerEmployeeId = user.employeeId;
+
+    const teamEmployees = await Employee.find({
+      reports_to: managerEmployeeId
+    }).select("_id");
+
+    const employeeIds = teamEmployees.map(
+      employee => employee._id
+    );
+
+    const attendance = await Attendance.find({
+      employee_id: {
+        $in: employeeIds
+      }
+    })
+      .populate(
+        "employee_id",
+        "employee_code name_en name_ar department_id job_title"
+      )
+      .sort({ date: -1 });
+
+    return res.status(200).json(attendance);
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
+async function getTodayAllAttendance(req, res) {
+  try {
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await Attendance.find({
+      date: today
+    })
+      .populate(
+        "employee_id",
+        "employee_code name_en name_ar department_id job_title"
+      )
+      .sort({ in_time: 1 });
+
+    return res.status(200).json(attendance);
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
 async function getEmployeeAttendance(req, res) {
   try {
     const { userId } = req.params;
@@ -272,12 +356,71 @@ async function getAllAttendance(req, res) {
   }
 }
 
+async function lockAttendance(req, res) {
+  try {
+    const { attendanceId } = req.params;
+    const changed_by = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(attendanceId)) {
+      return res.status(400).json({
+        error: "Invalid attendance id"
+      });
+    }
+
+    const attendance = await Attendance.findById(attendanceId);
+
+    if (!attendance) {
+      return res.status(404).json({
+        error: "Attendance not found"
+      });
+    }
+
+    if (attendance.locked) {
+      return res.status(409).json({
+        error: "Attendance is already locked"
+      });
+    }
+
+    attendance.locked = true;
+
+    await attendance.save();
+
+    await AuditLog.create({
+      table_name: "Attendance",
+      record_id: attendance._id.toString(),
+      action: "update",
+      changed_by,
+      field_name: "locked",
+      old_value: "false",
+      new_value: "true",
+      reason: "Attendance locked for payroll",
+      ip_address: req.ip
+    });
+
+    return res.status(200).json({
+      message: "Attendance locked successfully",
+      attendance
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
 
 
 module.exports = {
-    createAttendance,
+    lockAttendance,
     getMyAttendance,
     getTodayAttendance,
     getAttendanceById,
+    getEmployeeAttendance,
+    getAllAttendance,
     updateAttendance,
+    getTodayAllAttendance,
+    getTeamAttendance
+
 }
