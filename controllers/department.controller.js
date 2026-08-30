@@ -82,6 +82,16 @@ async function updateDepartment(req, res) {
         if (!department) {
             return res.status(404).json({ message: 'Department Not Found.' })
         }
+
+        logUpdate({
+            tableName: "department",
+            recordId: department._id,
+            userId: req.user._id,
+            before,
+            after: { name, manager_id },
+            ipAddress: req.ip,
+        })
+
         return res.status(200).json(departmert)
     }
     catch (err) {
