@@ -137,6 +137,16 @@ async function updateAttendance(req, res) {
         if (!attendance) {
             return res.status(404).json({ message: 'Attendance record not found.' })
         }
+
+        logUpdate({
+            tableName: 'attendance',
+            recordId: attendance._id,
+            userId: req.user._id,
+            before,
+            after: { status, in_time, out_time, is_late_entry, is_early_exit, is_incomplete },
+            ipAddress: req.ip
+        })
+
         return res.status(200).json({ attendance })
     }
     catch (err) {
