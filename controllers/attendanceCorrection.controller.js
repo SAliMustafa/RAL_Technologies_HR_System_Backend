@@ -126,6 +126,20 @@ async function correctByHr(req, res) {
             { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
         )
 
+        logUpdate({
+            tableName: 'attendance',
+            recordId: correction._id,
+            userId: req.user._id,
+            before: beforeAttendance || {},
+            after: {
+                status: correction.requested_status,
+                in_time: correction.requested_in_time,
+                out_time: correction.requested_out_time,
+            },
+            reason: correction.reason,
+            ipAddress: req.ip
+        })
+
         correction.status = "corrected_by_hr"
         correction.corrected_by = req.user._id
         correction.corrected_at = new Date()
