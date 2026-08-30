@@ -16,6 +16,8 @@ const leaveRequestRoutes = require('./routes/leaveRequest.routes')
 const checkInRoutes =require("./routes/checkIn.routes")
 const attendanceRoutes = require('./routes/attendance.routes')
 const attendanceCorrectionRoutes = require('./routes/attendanceCorrection.routes')
+const holidayRoutes = require('./routes/holiday.routes')
+
 // Middleware
 app.use(
     cors({
@@ -38,6 +40,7 @@ app.use('/leave-request', leaveRequestRoutes)
 app.use('/checkIn', checkInRoutes)
 app.use('/attendance', attendanceRoutes)
 app.use('/attendance-corrections', attendanceCorrectionRoutes)
+app.use('/holidays', holidayRoutes)
 
 
 
