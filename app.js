@@ -18,6 +18,7 @@ const attendanceRoutes = require('./routes/attendance.routes')
 const attendanceCorrectionRoutes = require('./routes/attendanceCorrection.routes')
 const holidayRoutes = require('./routes/holiday.routes')
 
+
 // Middleware
 app.use(
     cors({
