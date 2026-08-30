@@ -1,6 +1,16 @@
 const mongoose = require('mongoose')
 const LeaveType = require('../models/LeaveType')
 
+const handleError = (res, err) => {
+    console.error(err)
+
+    if (err.code === 11000) {
+        return res.status(409).json({message: 'A leave type with this name already exists.'})
+    }
+
+    return res.status(500).json({message: 'Internal server error.'})
+}
+
 const validateNextLeaveType = async(nextId, currentId = null)=>{
     if(!nextId) return null
 
@@ -55,7 +65,7 @@ async function createLeaveType(req,res){
 
     return res.status(201).json(leaveType)
     } catch(err){
-        console.log(err)
+        return handleError(res, err)
     }
 }
 
@@ -67,7 +77,7 @@ async function getAllLeaveTypes(req,res){
     
         res.status(200).json({leaveType})
     }catch(err){
-        console.log(err)
+        return handleError(res, err)
     }
 }
 
@@ -78,12 +88,12 @@ async function getLeaveTypeById(req,res){
         const leaveType = await LeaveType.findById(id).populate("next_leave_type_id", "leave_type_name")
 
         if(!leaveType){
-            res.status(404).json({message: "Leave type not found"})
+            return res.status(404).json({message: "Leave type not found"})
         }
         return res.status(200).json({leaveType})
 
     }catch(err){
-        console.log(err)
+        return handleError(res, err)
     }
 }
 
@@ -133,10 +143,7 @@ async function unpdateLeaveType(req,res){
         res.status(200).json(updated)
 
     }catch(err){
-        if (err.code === 11000) {
-            return res.status(409).json({message: "A leave type with this name already exists."});
-        }
-        return res.status(500).json({message: err})
+        return handleError(res, err)
     }
 }
 
@@ -152,7 +159,7 @@ async function deactivateLeaveType(req,res){
 
         return res.status(200).json(leaveType)
     }catch(err){
-        res.status(500).json(err)
+        return handleError(res, err)
     }
 }
 
