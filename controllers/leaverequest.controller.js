@@ -47,8 +47,12 @@ const createHttpError = (status, message) => {
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id)
 
 const isWeekend = (date) => {
-    const day = date.getDay()
+    const day = date.getUTCDay()
     return day === 5 || day === 6
+}
+
+const getDateKey = (date) => {
+    return new Date(date).toISOString().slice(0, 10)
 }
 
 const computeTotalDays = async (fromDate, toDate, isHalfDay) => {
@@ -56,25 +60,33 @@ const computeTotalDays = async (fromDate, toDate, isHalfDay) => {
         date: {$gte: fromDate, $lte: toDate},
         is_confirmed: true
     }).distinct("date")
-    const holidaySet = new Set(confirmedHolidays.map((d)=> new Date(d).toDateString()))
+    const holidaySet = new Set(confirmedHolidays.map((d) => getDateKey(d)))
 
     let count = 0;
     const cursor = new Date(fromDate)
     while (cursor <= toDate){
-        if(!isWeekend(cursor) && !holidaySet.has(cursor.toDateString())){
+        const isHoliday = holidaySet.has(getDateKey(cursor))
+        if(!isWeekend(cursor) && !isHoliday){
             count += 1
         }
-        cursor.setDate(cursor.getDate() + 1)
+        cursor.setUTCDate(cursor.getUTCDate() + 1)
     }
     return isHalfDay ? (count > 0 ? 0.5 : 0) : count
 }
 
 const monthsOfService = (dateOfJoining) => {
+    const joiningDate = new Date(dateOfJoining)
+    if(Number.isNaN(joiningDate.getTime())){
+        return 0
+    }
     const now = new Date()
-    return (
-        (now.getFullYear() - dateOfJoining.getFullYear()) * 12 + 
-        (now.getMonth() - dateOfJoining.getMonth())
-    )
+    let months = 
+    (now.getFullYear() - joiningDate.getFullYear()) * 12 + 
+    (now.getMonth() - joiningDate.getMonth())
+    if(now.getDate() < joiningDate.getDate()){
+        months -= 1
+    }
+    return Math.max(months, 0)
 }
 
 const findApplicableAllocation = (employeeId, leaveTypeId, fromDate, toDate) =>
@@ -483,7 +495,7 @@ async function approveLeaveRequest(req,res){
         if(!allocation){
             return res.status(409).json({success: false, message: "No matching allocation found to deduct from."})
         }
-        await adjustDaysTaken(allocation._id, leaveRequest.total_days)
+        const updatedAllocation = await adjustDaysTaken(allocation._id, leaveRequest.total_days)
         const beforeApproval = leaveRequest.toObject()
         leaveRequest.status = 'approved'
         await leaveRequest.save()
@@ -497,6 +509,19 @@ async function approveLeaveRequest(req,res){
                 status: leaveRequest.status,
             },
             reason: "Leave request approved",
+            ipAddress: req.ip
+        })
+        await logUpdate({
+            tableName: "LeaveAllocation",
+            recordId: updatedAllocation._id,
+            userId: req.user._id,
+            before: {
+                days_taken: allocation.days_taken
+            },
+            after: {
+                days_taken: updatedAllocation.days_taken
+            },
+            reason: `Leave request ${leaveRequest._id} approved`,
             ipAddress: req.ip
         })
 
@@ -585,8 +610,21 @@ async function cancelLeaveRequest(req,res){
             if(!allocation){
                 return res.status(409).json({success: false, message: "No matching allocation found to restore the leave balance."})
             }
-            await adjustDaysTaken(allocation._id, -leaveRequest.total_days)
+            const updatedAllocation = await adjustDaysTaken(allocation._id, -leaveRequest.total_days)
             leaveRequest.decision_note = decision_note
+            await logUpdate({
+                tableName: "LeaveAllocation",
+                recordId: updatedAllocation._id,
+                userId: req.user._id,
+                before: {
+                    days_taken: allocation.days_taken
+                },
+                after: {
+                    days_taken: updatedAllocation.days_taken
+                },
+                reason: `Leave request ${leaveRequest._id} cancelled`,
+                ipAddress: req.ip
+            })
         } else if(decision_note){
             leaveRequest.decision_note = decision_note
         }

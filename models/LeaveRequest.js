@@ -35,15 +35,20 @@ const leaveRequestSchema = new mongoose.Schema(
 
     total_days: {
       type: Number,
-      required: true
+      required: true,
+      min: 0.5
     },
 
     reason: {
-      type: String
+      type: String,
+      trim: true,
+      maxlength: 1000
     },
 
     document: {
-      type: String
+      type: String,
+      trim: true,
+      maxlength: 2000
     },
 
     approver_id: {
@@ -70,11 +75,24 @@ const leaveRequestSchema = new mongoose.Schema(
     },
 
     decision_note: {
-      type: String
+      type: String,
+      trim: true,
+      maxlength: 1000
     }
   },
   { timestamps: true }
 );
+
+leaveRequestSchema.index({
+  employee_id: 1, createdAt: -1
+})
+leaveRequestSchema.index({
+  approver_id: 1, status: 1, createdAt: -1
+})
+leaveRequestSchema.index({
+  employee_id: 1, from_date: 1, to_date: 1
+})
+
 
 module.exports = mongoose.model(
   "LeaveRequest",
