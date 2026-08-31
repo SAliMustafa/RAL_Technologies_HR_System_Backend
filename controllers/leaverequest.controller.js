@@ -6,6 +6,7 @@ const Employee = require("../models/Employee");
 const Holiday = require("../models/Holiday");
 const { adjustDaysTaken } = require("./leaveallocation.controller");
 const User = require('../models/User')
+const {logCreate, logUpdate, logDelete} = require('../utils/auditLog')
 
 const handleError = (res, err, fallbackStatus = 500) => {
   console.error(err);
@@ -219,9 +220,31 @@ async function createLeaveRequest(req,res){
             status,
             balance_at_request
         })
+
+        await logCreate({
+            tableName: 'LeaveRequest',
+            recordId: leaveRequest._id,
+            userId: req.user._id,
+            data: {
+                employee_id: leaveRequest.employee_id,
+                leave_type_id: leaveRequest.leave_type_id,
+                from_date: leaveRequest.from_date,
+                to_date: leaveRequest.to_date,
+                is_half_day: leaveRequest.is_half_day,
+                half_day_date: leaveRequest.half_day_date,
+                total_days: leaveRequest.total_days,
+                reason: leaveRequest.reason,
+                document: leaveRequest.document,
+                approver_id: leaveRequest.approver_id,
+                status: leaveRequest.status,
+                balance_at_request: leaveRequest.balance_at_request
+            },
+            ipAddress: req.ip
+        })
+
         return res.status(201).json({success: true, data: leaveRequest})
     }catch(err){
-        return handleError(res,err,400)
+        return handleError(res,err,500)
     }
 }
 
@@ -313,9 +336,20 @@ async function updateLeaveRequest(req,res){
             return res.status(400).json({success: false, message: "No update fields were provided."})
         }
         const updated = await LeaveRequest.findByIdAndUpdate(id, updates, {new: true, runValidators: true})
+
+        await logUpdate({
+            tableName: "LeaveRequest",
+            recordId: updated._id,
+            userId: req.user._id,
+            before: existing.toObject(),
+            after: updates,
+            reason: "Draft leave request updated",
+            ipAddress: req.ip
+        })
+
         return res.status(200).json({success: true, data: updated})
     }catch(err){
-        return handleError(res, err, 400)
+        return handleError(res, err)
     }
 }
 
@@ -368,15 +402,32 @@ async function submitLeaveRequest(req,res){
             document: leaveRequest.document
         })
 
+        const beforeSubmit = leaveRequest.toObject()
+
         leaveRequest.status = 'pending'
         leaveRequest.balance_at_request = remaining
         leaveRequest.total_days = recalculatedTotalDays
         leaveRequest.approver_id = employee.reports_to
         await leaveRequest.save()
 
+        await logUpdate({
+            tableName: "LeaveRequest",
+            recordId: leaveRequest._id,
+            userId: req.user._id,
+            before: beforeSubmit,
+            after: {
+                status: leaveRequest.status,
+                balance_at_request: leaveRequest.balance_at_request,
+                total_days: leaveRequest.total_days,
+                approver_id: leaveRequest.approver_id
+            },
+            reason: "Leave request submitted",
+            ipAddress: req.ip
+        })
+
         return res.status(200).json({success: true, data: leaveRequest})
     }catch(err){
-        return handleError(res,err,400)
+        return handleError(res,err)
     }
 }
 
@@ -405,11 +456,25 @@ async function approveLeaveRequest(req,res){
             return res.status(409).json({success: false, message: "No matching allocation found to deduct from."})
         }
         await adjustDaysTaken(allocation._id, leaveRequest.total_days)
+        const beforeApproval = leaveRequest.toObject()
         leaveRequest.status = 'approved'
         await leaveRequest.save()
+
+        await logUpdate({
+            tableName: "LeaveRequest",
+            recordId: leaveRequest._id,
+            userId: req.user._id,
+            before: beforeApproval,
+            after: {
+                status: leaveRequest.status,
+            },
+            reason: "Leave request approved",
+            ipAddress: req.ip
+        })
+
         return res.status(200).json({success: true, data: leaveRequest})
     }catch(err){
-        return handleError(res,err,400)
+        return handleError(res,err)
     }
 }
 
@@ -437,12 +502,25 @@ async function rejectLeaveRequest(req,res){
         if(currentUser.role !== 'hr_admin' && (currentUser.role !== 'manager' || String(leaveRequest.approver_id) !== String(currentUser.employeeId))){
             return res.status(403).json({success: false, message: "You are not authorized to decide this request."})
         }
+        const beforeRejection = leaveRequest.toObject()
         leaveRequest.status = 'rejected'
         leaveRequest.decision_note = decision_note
         await leaveRequest.save()
+        await logUpdate({
+            tableName: "LeaveRequest",
+            recordId: leaveRequest._id,
+            userId: req.user._id,
+            before: beforeRejection,
+            after: {
+                status: leaveRequest.status,
+                decision_note: leaveRequest.decision_note
+            },
+            reason: "Leave request rejected",
+            ipAddress: req.ip
+        })
         return res.status(200).json({success: true, data: leaveRequest})
     }catch(err){
-        return handleError(res,err,400)
+        return handleError(res,err)
     }
 }
 
@@ -470,6 +548,7 @@ async function cancelLeaveRequest(req,res){
         if(['rejected', 'cancelled'].includes(leaveRequest.status)){
             return res.status(409).json({success: false, message: "This request is already finalized."})
         }
+        const beforeCancellation = leaveRequest.toObject()
         if(leaveRequest.status === 'approved'){
             if(!decision_note){
                 return res.status(400).json({success: false, message: "decision_note is required when cancelling an approved request."})
@@ -483,12 +562,23 @@ async function cancelLeaveRequest(req,res){
         } else if(decision_note){
             leaveRequest.decision_note = decision_note
         }
-
         leaveRequest.status = 'cancelled'
         await leaveRequest.save()
+        await logUpdate({
+            tableName: "LeaveRequest",
+            recordId: leaveRequest._id,
+            userId: req.user._id,
+            before: beforeCancellation,
+            after: {
+                status: leaveRequest.status,
+                decision_note: leaveRequest.decision_note
+            },
+            reason: "Leave request cancelled",
+            ipAddress: req.ip
+        })
         return res.status(200).json({success: true, data: leaveRequest})
     }catch(err){
-        return handleError(res,err,400)
+        return handleError(res,err)
     }
 }
 
@@ -588,6 +678,13 @@ async function deleteLeaveRequest(req,res){
             return res.status(409).json({success: false, message: "Only draft requests can be deleted. Use cancel for submitted requests."})
         }
         await LeaveRequest.findByIdAndDelete(id)
+        await logDelete({
+            tableName: "LeaveRequest",
+            recordId: leaveRequest._id,
+            userId: req.user._id,
+            reason: req.body?.reason || 'Draft leave request deleted',
+            ipAddress: req.ip
+        })
         return res.status(200).json({success: true, message: "Draft leave request deleted."})
     }catch(err){
         return handleError(res,err)
