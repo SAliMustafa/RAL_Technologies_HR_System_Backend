@@ -82,7 +82,7 @@ const monthsOfService = (dateOfJoining) => {
     const now = new Date()
     let months = 
     (now.getFullYear() - joiningDate.getFullYear()) * 12 + 
-    (now.getMonth() - joiningDate.getDate())
+    (now.getMonth() - joiningDate.getMonth())
     if(now.getDate() < joiningDate.getDate()){
         months -= 1
     }
