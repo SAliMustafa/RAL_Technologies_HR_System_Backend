@@ -3,6 +3,7 @@ const LeaveAllocation = require('../models/LeaveAllocation')
 const LeaveType = require('../models/LeaveType')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
+const {logCreate, logUpdate, logDelete} = require('../utils/auditLog')
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id)
 
@@ -83,16 +84,16 @@ async function createLeaveAllocation(req,res){
             return res.status(400).json({success: false, message: "days_carried_forward exceeds the leave type maximum."})
         }
 
-    const overlap = await LeaveAllocation.findOne({
-        employee_id,
-        leave_type_id,
-        period_start: {$lte: endDate},
-        period_end: {$gte: startDate}
-    })        
+        const overlap = await LeaveAllocation.findOne({
+            employee_id,
+            leave_type_id,
+            period_start: {$lte: endDate},
+            period_end: {$gte: startDate}
+        })        
 
-    if(overlap){
-        return res.status(409).json({success: false, message: "An allocation exists that overlaps this period."})
-    }
+        if(overlap){
+            return res.status(409).json({success: false, message: "An allocation exists that overlaps this period."})
+        }
 
         const leaveAllocation = await LeaveAllocation.create({
             employee_id,
@@ -101,6 +102,22 @@ async function createLeaveAllocation(req,res){
             period_end: endDate,
             days_allocated,
             days_carried_forward: days_carried_forward ?? 0
+        })
+
+        await logCreate({
+            tableName: 'LeaveAllocation',
+            recordId: leaveAllocation._id,
+            userId: req.user._id,
+            data: {
+                employee_id: leaveAllocation.employee_id,
+                leave_type_id: leaveAllocation.leave_type_id,
+                period_start: leaveAllocation.period_start,
+                period_end: leaveAllocation.period_end,
+                days_allocated: leaveAllocation.days_allocated,
+                days_carried_forward: leaveAllocation.days_carried_forward,
+                days_taken: leaveAllocation.days_taken
+            },
+            ipAddress: req.ip
         })
 
         return res.status(201).json(leaveAllocation)
@@ -256,8 +273,8 @@ async function updateAllocation(req,res){
         }
 
         const updates = {
-            ...(period_start !== undefined && {period_start}),
-            ...(period_end !== undefined && {period_end}),
+            ...(period_start !== undefined && {period_start: finalStart}),
+            ...(period_end !== undefined && {period_end: finalEnd}),
             ...(days_allocated !== undefined && {days_allocated}),
             ...(days_carried_forward !== undefined && {days_carried_forward}),
         }
@@ -270,6 +287,16 @@ async function updateAllocation(req,res){
     if(!updated){
         return res.status(404).json({success: false, message: "Allocation not found"})
     }
+
+    await logUpdate({
+        tableName: 'LeaveAllocation',
+        recordId: updated._id,
+        userId: req.user._id,
+        before: existingAllocation.toObject(),
+        after: updates,
+        reason: req.body.reason,
+        ipAddress: req.ip
+    })
 
     return res.status(200).json(updated)
     }catch(err){
@@ -291,6 +318,15 @@ async function deleteAllocation(req,res){
             })
         }
         await LeaveAllocation.findByIdAndDelete(id)
+
+        await logDelete({
+            tableName: 'LeaveAllocation',
+            recordId: allocation._id,
+            userId: req.user._id,
+            reason: req.body?.reason || 'Leave allocation deleted by HR',
+            ipAddress: req.ip
+        })
+
         return res.status(200).json({message: "Allocation deleted."})
     }catch(err){
         return handleError(res,err)
