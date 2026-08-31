@@ -8,13 +8,41 @@ const { adjustDaysTaken } = require("./leaveallocation.controller");
 const User = require('../models/User')
 const {logCreate, logUpdate, logDelete} = require('../utils/auditLog')
 
-const handleError = (res, err, fallbackStatus = 500) => {
-  console.error(err);
-  return res.status(fallbackStatus).json({
-    success: false,
-    message: err.message || "Something went wrong",
-  });
-};
+const handleError = (res, err) => {
+    console.error(err)
+
+    if(err.status){
+        return res.status(err.status).json({
+            success: false,
+            message: err.message
+        })
+    }
+
+    if(err.name === 'ValidationError' || err.name === 'CastError'){
+        return res.status(400).json({
+            success: false,
+            message: err.message
+        })
+    }
+
+    if(err.code === 11000){
+        return res.status(409).json({
+            success: false,
+            message: "A conflicting leave request already exists."
+        })
+    }
+
+    return res.status(500).json({
+        success: false,
+        message: "Internal server error."
+    })
+}
+
+const createHttpError = (status, message) => {
+    const error = new Error(message)
+    error.status = status
+    return error
+}
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id)
 
@@ -75,16 +103,16 @@ const runSubmitChecks = async (employee, leaveType, {from_date, to_date, total_d
     if(leaveType.gender_restriction){
         const requiredGender = GENDER_RESTRICTION_MAP[leaveType.gender_restriction]
         if(requiredGender && employee.gender !== requiredGender) {
-            throw new Error(`This leave type is restricted to ${leaveType.gender_restriction} employees`)
+            throw createHttpError(400, `This leave type is restricted to ${leaveType.gender_restriction} employees`)
         }
     }
     if(leaveType.requires_document && !document){
-        throw new Error('This leave type requires a supporting document before it can be submitted.')
+        throw createHttpError(400, 'This leave type requires a supporting document before it can be submitted.')
     }
     if(leaveType.requires_service_months &&
         monthsOfService(employee.date_of_joining) < leaveType.requires_service_months
     ) {
-        throw new Error(`This leave type requires at least ${leaveType.requires_service_months} months of service.`)
+        throw createHttpError(400, `This leave type requires at least ${leaveType.requires_service_months} months of service.`)
     }
     if(leaveType.once_per_lifetime){
         const usedBefore = await LeaveRequest.findOne({
@@ -93,21 +121,21 @@ const runSubmitChecks = async (employee, leaveType, {from_date, to_date, total_d
             status: 'approved'
         })
         if(usedBefore){
-            throw new Error("This leave type can only be used once.")
+            throw createHttpError(409, "This leave type can only be used once.")
         }
     }
 
     const overlap = await findOverlap(employee._id, from_date, to_date)
     if(overlap){
-        throw new Error("This employee already has a pending or approved request that overlaps these dates.")
+        throw createHttpError(409, "This employee already has a pending or approved request that overlaps these dates.")
     }
     const allocation = await findApplicableAllocation(employee._id, leaveType._id, from_date, to_date)
     if(!allocation){
-        throw new Error('No leave allocation found for this employee, leave type, and period.')
+        throw createHttpError(409, 'No leave allocation found for this employee, leave type, and period.')
     }
     const remaining = allocation.days_allocated + allocation.days_carried_forward - allocation.days_taken
     if(total_days > remaining){
-        throw new Error(`Insufficient balance: ${remaining} day(s) remaining, ${total_days} requested.`)
+        throw createHttpError(409, `Insufficient balance: ${remaining} day(s) remaining, ${total_days} requested.`)
     }
     return {allocation, remaining}
 
@@ -244,7 +272,7 @@ async function createLeaveRequest(req,res){
 
         return res.status(201).json({success: true, data: leaveRequest})
     }catch(err){
-        return handleError(res,err,500)
+        return handleError(res,err)
     }
 }
 
