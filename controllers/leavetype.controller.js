@@ -1,4 +1,5 @@
 const LeaveType = require('../models/LeaveType')
+const AuditLog = require('../models/AuditLog')
 
 const handleError = (res, err) => {
     console.error(err)
@@ -106,6 +107,41 @@ async function createLeaveType(req,res){
       next_leave_type_id: nextId      
     })
 
+        const auditFields = {
+            leave_type_name: leaveType.leave_type_name,
+            max_days_per_year: leaveType.max_days_per_year,
+            pay_fraction: leaveType.pay_fraction,
+            requires_service_months: leaveType.requires_service_months,
+            requires_document: leaveType.requires_document,
+            carry_forward: leaveType.carry_forward,
+            max_carry_forward: leaveType.max_carry_forward,
+            counts_toward_service: leaveType.counts_toward_service,
+            once_per_lifetime: leaveType.once_per_lifetime,
+            gender_restriction: leaveType.gender_restriction,
+            next_leave_type_id: leaveType.next_leave_type_id,
+            is_active: leaveType.is_active
+        }
+
+        const auditLogs = []
+        for(const [field_name, value] of Object.entries(auditFields)){
+            if(value !== undefined && value !== null){
+                auditLogs.push({
+                    table_name: 'LeaveType',
+                    record_id: leaveType._id.toString(),
+                    action: 'create',
+                    changed_by: req.user._id,
+                    field_name,
+                    old_value: null,
+                    new_value: value.toString(),
+                    ip_address: req.ip
+                })
+            }
+        }
+
+        if(auditLogs.length > 0){
+            await AuditLog.insertMany(auditLogs)
+        }
+
     return res.status(201).json(leaveType)
     } catch(err){
         return handleError(res, err)
@@ -143,6 +179,10 @@ async function getLeaveTypeById(req,res){
 async function updateLeaveType(req,res){
     try{
         const {id} = req.params
+        const existingLeaveType = await LeaveType.findById(id)
+        if(!existingLeaveType){
+            return res.status(404).json({success: false, message: "Leave type not found."})
+        }
         const {
             leave_type_name,
             max_days_per_year,
@@ -183,7 +223,37 @@ async function updateLeaveType(req,res){
             return res.status(404).json({message: 'Leave type not found.'})
         }
 
-        res.status(200).json(updated)
+        const auditLogs = []
+        for (const field_name of Object.keys(updates)){
+            const oldValue = 
+                existingLeaveType[field_name] === undefined || 
+                existingLeaveType[field_name] === null
+                ? ''
+                : existingLeaveType[field_name].toString()
+            const newValue = 
+                updated[field_name] === undefined ||
+                updated[field_name] === null
+                ? ''
+                : updated[field_name].toString()
+            if(oldValue !== newValue){
+                auditLogs.push({
+                    table_name: 'LeaveType',
+                    record_id: updated._id.toString(),
+                    action: 'update',
+                    changed_by: req.user._id,
+                    field_name,
+                    old_value: oldValue,
+                    new_value: newValue,
+                    ip_address: req.ip
+                })
+            }
+        }
+
+        if(auditLogs.length>0){
+            await AuditLog.insertMany(auditLogs)
+        }
+
+        return res.status(200).json(updated)
 
     }catch(err){
         return handleError(res, err)
@@ -193,12 +263,30 @@ async function updateLeaveType(req,res){
 async function deactivateLeaveType(req,res){
     try{
         const {id} = req.params
-
-        const leaveType = await LeaveType.findByIdAndUpdate(id, {is_active: false}, {new: true})
+        const existingLeaveType = await LeaveType.findById(id)
+        if(!existingLeaveType){
+            return res.status(404).json({success: false, message: "Leave type not found."})
+        }
+        if(!existingLeaveType.is_active){
+            return res.status(400).json({success: false, message: "Leave type is already inactive."})
+        }
+        const leaveType = await LeaveType.findByIdAndUpdate(id, {is_active: false}, {new: true, runValidators: true} )
 
         if (!leaveType) {
             return res.status(404).json({ success: false, message: "Leave type not found." });
         }
+
+        await AuditLog.create({
+            table_name: 'LeaveType',
+            record_id: leaveType._id.toString(),
+            action: 'delete',
+            changed_by: req.user._id,
+            field_name: 'is_active',
+            old_value: existingLeaveType.is_active.toString(),
+            new_value: leaveType.is_active.toString(),
+            reason: 'Leave type deactivated by HR',
+            ip_address: req.ip
+        })
 
         return res.status(200).json(leaveType)
     }catch(err){
