@@ -273,8 +273,8 @@ async function updateAllocation(req,res){
         }
 
         const updates = {
-            ...(period_start !== undefined && {period_start}),
-            ...(period_end !== undefined && {period_end}),
+            ...(period_start !== undefined && {period_start: finalStart}),
+            ...(period_end !== undefined && {period_end: finalEnd}),
             ...(days_allocated !== undefined && {days_allocated}),
             ...(days_carried_forward !== undefined && {days_carried_forward}),
         }
@@ -318,6 +318,15 @@ async function deleteAllocation(req,res){
             })
         }
         await LeaveAllocation.findByIdAndDelete(id)
+
+        await logDelete({
+            tableName: 'LeaveAllocation',
+            recordId: allocation._id,
+            userId: req.user._id,
+            reason: req.body?.reason || 'Leave allocation deleted by HR',
+            ipAddress: req.ip
+        })
+
         return res.status(200).json({message: "Allocation deleted."})
     }catch(err){
         return handleError(res,err)
