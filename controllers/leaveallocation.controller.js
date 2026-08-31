@@ -288,6 +288,16 @@ async function updateAllocation(req,res){
         return res.status(404).json({success: false, message: "Allocation not found"})
     }
 
+    await logUpdate({
+        tableName: 'LeaveAllocation',
+        recordId: updated._id,
+        userId: req.user._id,
+        before: existingAllocation.toObject(),
+        after: updates,
+        reason: req.body.reason,
+        ipAddress: req.ip
+    })
+
     return res.status(200).json(updated)
     }catch(err){
         return handleError(res,err)
