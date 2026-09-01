@@ -22,6 +22,6 @@ const holidaySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-holidaySchema.index({holiday_list_id: 1, date: 1}, {unique: true})
+holidaySchema.index({ date: 1 }, { unique: true })
 
 module.exports = mongoose.model("Holiday", holidaySchema);
