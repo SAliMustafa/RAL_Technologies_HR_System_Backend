@@ -38,7 +38,7 @@ async function getAttendanceById(req, res) {
 
 async function updateAttendance(req, res) {
   try {
-    const { attendanceid } = req.params;
+    const { attendanceId } = req.params;
 
     const {
       status,
@@ -50,7 +50,7 @@ async function updateAttendance(req, res) {
       correction_reason
     } = req.body;
 
-    const attendance = await Attendance.findById(attendanceid);
+    const attendance = await Attendance.findById(attendanceId);
 
     if (!attendance) {
       return res.status(404).json({
@@ -58,31 +58,21 @@ async function updateAttendance(req, res) {
       });
     }
 
-
-
-    // if (attendance.locked) {
-    //   return res.status(403).json({
-    //     message: "This attendance is locked and cannot be updated."
-    //   });
-    // }
-
-
     if (!correction_reason) {
       return res.status(400).json({
         message: "Correction reason is required."
       });
     }
 
-
     if (
       status &&
       ![
-        "Present",
-        "Absent",
-        "Half Day",
-        "On Leave",
-        "Holiday",
-        "Weekly Off"
+        "present",
+        "absent",
+        "half_day",
+        "on_leave",
+        "holiday",
+        "weekly_off"
       ].includes(status)
     ) {
       return res.status(400).json({
@@ -100,8 +90,6 @@ async function updateAttendance(req, res) {
     ];
 
     const auditLogs = [];
-
-  
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
@@ -127,8 +115,6 @@ async function updateAttendance(req, res) {
         }
       }
     }
-
-   
 
     attendance.is_corrected = true;
     attendance.corrected_by = req.user._id;
