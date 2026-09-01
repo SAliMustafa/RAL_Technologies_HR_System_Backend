@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const path = require("path");
 const LeaveRequest = require("../models/LeaveRequest");
 const LeaveType = require("../models/LeaveType");
 const LeaveAllocation = require("../models/LeaveAllocation");
@@ -45,6 +46,24 @@ const createHttpError = (status, message) => {
 }
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id)
+
+// Multipart forms send booleans as strings, so convert them before validation.
+const parseOptionalBoolean = (value) => {
+    if(value === undefined) return undefined
+    if(value === true || value === "true") return true
+    if(value === false || value === "false") return false
+    return null
+}
+
+// Owners, assigned managers, and HR admins may view a leave request or its file.
+const canViewLeaveRequest = (currentUser, leaveRequest) => {
+    const employeeId = leaveRequest.employee_id?._id || leaveRequest.employee_id
+    const approverId = leaveRequest.approver_id?._id || leaveRequest.approver_id
+
+    return currentUser.role === "hr_admin" ||
+        String(employeeId) === String(currentUser.employeeId) ||
+        (currentUser.role === "manager" && String(approverId) === String(currentUser.employeeId))
+}
 
 const isWeekend = (date) => {
     const day = date.getUTCDay()
@@ -160,12 +179,16 @@ async function createLeaveRequest(req,res){
             leave_type_id,
             from_date, 
             to_date,
-            is_half_day,
+            is_half_day: rawIsHalfDay,
             half_day_date,
             reason,
-            document,
             submit,
         } = req.body
+
+        // Prefer the uploaded file path; JSON requests can still omit a document.
+        const document = req.file?.path
+        const is_half_day = parseOptionalBoolean(rawIsHalfDay)
+        const shouldSubmit = parseOptionalBoolean(submit)
 
         const currentUser = await User.findById(req.user._id).select('role employeeId')
         if(!currentUser){
@@ -187,8 +210,11 @@ async function createLeaveRequest(req,res){
         if(currentUser.role !== 'hr_admin' && String(employee_id) !== String(currentUser.employeeId)){
             return res.status(403).json({success: false, message: "You can only create leave requests for yourself."})
         }
-        if(is_half_day !== undefined && typeof is_half_day !== 'boolean'){
+        if(is_half_day === null){
             return res.status(400).json({success: false, message: "is_half_day must be true or false."})
+        }
+        if(shouldSubmit === null){
+            return res.status(400).json({success: false, message: "submit must be true or false."})
         }
 
         const [employee, leaveType] = await Promise.all([
@@ -233,10 +259,10 @@ async function createLeaveRequest(req,res){
         if(total_days <= 0){
             return res.status(400).json({success: false, message: "The selected period contains no working days."})
         }
-        const status = submit ? "pending" : "draft"
+        const status = shouldSubmit ? "pending" : "draft"
         let balance_at_request
 
-        if (submit){
+        if (shouldSubmit){
             const {remaining} = await runSubmitChecks(employee, leaveType, {
                 from_date: finalFrom, 
                 to_date: finalTo, 
@@ -315,9 +341,10 @@ async function updateLeaveRequest(req,res){
             })
         }
 
-        const {leave_type_id, from_date, to_date, is_half_day, half_day_date, reason, document} = req.body
+        const {leave_type_id, from_date, to_date, is_half_day: rawIsHalfDay, half_day_date, reason} = req.body
+        const is_half_day = parseOptionalBoolean(rawIsHalfDay)
 
-        if(is_half_day !== undefined && typeof is_half_day !== 'boolean'){
+        if(is_half_day === null){
             return res.status(400).json({success: false, message: "is_half_day must be true or false."})
         }
 
@@ -337,7 +364,8 @@ async function updateLeaveRequest(req,res){
         }
 
         if(reason !== undefined) updates.reason = reason
-        if(document !== undefined) updates.document = document
+        // When editing a draft, a newly uploaded document replaces the old path.
+        if(req.file) updates.document = req.file.path
 
         const nextIsHalfDay = is_half_day !== undefined ? is_half_day : existing.is_half_day
         const datesChanged = from_date !== undefined || to_date !== undefined || half_day_date !== undefined || is_half_day !== undefined
@@ -706,15 +734,48 @@ async function getLeaveRequestById(req,res){
         if(!currentUser){
             return res.status(404).json({success: false, message: "User not found."})
         }
-        const employeeId = leaveRequest.employee_id?._id || leaveRequest.employee_id
-        const approverId = leaveRequest.approver_id?._id || leaveRequest.approver_id
-        const canView = currentUser.role === 'hr_admin' ||
-            String(employeeId) === String(currentUser.employeeId) ||
-            (currentUser.role === 'manager' && String(approverId) === String(currentUser.employeeId))
-        if(!canView){
+        if(!canViewLeaveRequest(currentUser, leaveRequest)){
             return res.status(403).json({success: false, message: "You are not authorized to view this leave request."})
         }
         return res.status(200).json({success: true, data: leaveRequest})
+    }catch(err){
+        return handleError(res,err)
+    }
+}
+
+async function downloadLeaveDocument(req,res){
+    try{
+        const {id} = req.params
+        if(!isValidId(id)){
+            return res.status(400).json({success: false, message: "Invalid leave request id."})
+        }
+
+        const [leaveRequest, currentUser] = await Promise.all([
+            LeaveRequest.findById(id),
+            User.findById(req.user._id).select("role employeeId")
+        ])
+
+        if(!leaveRequest){
+            return res.status(404).json({success: false, message: "Leave request not found."})
+        }
+        if(!currentUser){
+            return res.status(404).json({success: false, message: "User not found."})
+        }
+        if(!canViewLeaveRequest(currentUser, leaveRequest)){
+            return res.status(403).json({success: false, message: "You are not authorized to view this document."})
+        }
+        if(!leaveRequest.document){
+            return res.status(404).json({success: false, message: "This leave request has no document."})
+        }
+
+        // Only return files from the application's upload folder.
+        const uploadDirectory = path.resolve(__dirname, "../image")
+        const documentPath = path.resolve(leaveRequest.document)
+        if(!documentPath.startsWith(uploadDirectory + path.sep)){
+            return res.status(400).json({success: false, message: "Invalid document path."})
+        }
+
+        return res.download(documentPath)
     }catch(err){
         return handleError(res,err)
     }
@@ -766,5 +827,6 @@ module.exports = {
     cancelLeaveRequest,
     getAllLeaveRequests,
     getLeaveRequestById,
+    downloadLeaveDocument,
     deleteLeaveRequest
 }
