@@ -16,7 +16,7 @@ async function createCorrectionRequest(req, res) {
 
         const managed = await Employee.exists({
             _id: employee_id,
-            reports_to: user.employee_id
+            reports_to: user.employeeId
         })
 
         if (!managed) {
@@ -65,12 +65,12 @@ async function getCorrectionRequests(req, res) {
             filter.requested_by = req.user._id
         }
         else if (user.role === 'employee') {
-            filter.employee_id = user.employee_id
+            filter.employee_id = user.employeeId
         }
 
         if (status) filter.status = status
 
-        const corrections = await AttendanceCorrection.find(filter).sort({ requested_at: -1 })
+        const corrections = await AttendanceCorrection.find(filter).sort({ createdAt: -1 })
         return res.status(200).json(corrections)
     }
     catch (err) {
@@ -85,7 +85,7 @@ async function getCorrectionById(req, res) {
         const correction = await AttendanceCorrection.findById(req.params.id)
 
         if (!correction) {
-            res.status(404).json({ message: 'Correction request not found.' })
+            return res.status(404).json({ message: 'Correction request not found.' })
         }
         return res.status(200).json(correction)
     }
@@ -110,6 +110,12 @@ async function correctByHr(req, res) {
             })
         }
 
+        const beforeCorrection = correction.toObject()
+
+        const beforeAttendance = await Attendance.findOne({
+            employee_id: correction.employee_id,
+            date: correction.date,
+        }).lean()
 
         await Attendance.findOneAndUpdate(
             { employee_id: correction.employee_id, date: correction.date },
@@ -142,7 +148,6 @@ async function correctByHr(req, res) {
 
         correction.status = "corrected_by_hr"
         correction.corrected_by = req.user._id
-        correction.corrected_at = new Date()
         await correction.save()
 
         logUpdate({
@@ -150,7 +155,7 @@ async function correctByHr(req, res) {
             recordId: correction._id,
             userId: req.user._id,
             before: beforeCorrection,
-            after: { status: correction.status, corrected_by: correction.corrected_by, corrected_at: correction.corrected_at },
+            after: { status: correction.status, corrected_by: correction.corrected_by },
             ipAddress: req.ip,
         })
 
@@ -172,7 +177,7 @@ async function approveCorrection(req, res) {
         const correction = await AttendanceCorrection.findById(req.params.id)
 
         if (!correction) {
-            return res.status(404).json(({ message: 'Correction request not found.' }))
+            return res.status(404).json({ message: 'Correction request not found.' })
         }
 
         if (correction.status !== 'corrected_by_hr') {
@@ -187,7 +192,6 @@ async function approveCorrection(req, res) {
 
         correction.status = "approved"
         correction.approved_by = req.user._id
-        correction.approved_at = new Date()
         await correction.save()
 
         return res.status(200).json(correction)
@@ -214,7 +218,6 @@ async function rejectCorrection(req, res) {
         }
 
         correction.status = 'rejected'
-        correction.rejected_at = new Date()
         await correction.save()
 
         return res.status(200).json(correction)
@@ -227,10 +230,10 @@ async function rejectCorrection(req, res) {
 }
 
 module.exports = {
-    createCorrectionRequest,
-    getCorrectionRequests,
-    getCorrectionById,
-    correctByHr,
-    approveCorrection,
-    rejectCorrection,
+  createCorrectionRequest,
+  getCorrectionRequests,
+  getCorrectionById,
+  correctByHr,
+  approveCorrection,
+  rejectCorrection,
 }
