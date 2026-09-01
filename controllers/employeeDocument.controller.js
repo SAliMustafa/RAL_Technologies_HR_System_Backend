@@ -386,6 +386,12 @@ async function reviewDocument(req, res) {
       });
     }
 
+    if (!["verified", "rejected"].includes(status)) {
+      return res.status(400).json({
+        message: "Status must be verified or rejected"
+      });
+    }
+
     if (status === "rejected" && !rejection_reason) {
       return res.status(400).json({
         message: "Rejection reason is required"
@@ -426,7 +432,7 @@ async function reviewDocument(req, res) {
 
       action: status === "verified" ? "approve" : "update",
 
-      changed_by,
+      changed_by: verified_by,
 
       field_name: "status",
 
@@ -438,7 +444,14 @@ async function reviewDocument(req, res) {
 
       ip_address: req.ip
     });
-
+    
+    return res.status(200).json({
+      message:
+        status === "verified"
+          ? "Document verified successfully"
+          : "Document rejected successfully",
+      document: updatedDocument
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -454,7 +467,7 @@ async function getExpiryAlerts(req, res) {
 
     const documents = await EmployeeDocument.find({
       employee_id,
-      status: "verified",
+      // status: "verified",
       expiry_date: { $ne: null }
     });
 
@@ -526,12 +539,12 @@ async function deleteDocument(req, res) {
         old_value: true,
         new_value: false,
         reason: "Document deactivated by HR",
-         ip_address: req.ip,
+        ip_address: req.ip,
       })
 
 
 
-    res.status(200).json({ message: "Document deactivated by HR"  });
+    res.status(200).json({ message: "Document deactivated by HR" });
 
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -100,7 +100,7 @@ async function verifyUser(req, res) {
     return res.status(200).json({
         _id: user._id,
         username: user.username,
-         role:role
+         role:user.role
     });
   } catch (err) {
     console.error(err);

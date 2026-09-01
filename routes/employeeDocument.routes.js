@@ -6,10 +6,11 @@ const upload = require("../middleware/upload");
 
 
 // Routes  Employee
-router.post( "/",upload.single("file"),verifyRole.verifyEmployee,DocumentController.uploadDocumentByEmployee);
+router.post( "/",verifyToken,upload.single("file"),verifyRole.verifyEmployee,DocumentController.uploadDocumentByEmployee);
 
 router.get( "/my-documents",verifyToken,verifyRole.verifyEmployee,DocumentController.getMyDocuments);
 
+// this uselee
 router.put( "/:documentId",verifyToken,verifyRole.verifyEmployee,upload.single("file"),DocumentController.updateDocumentByEmployee);
 
 router.get( "/status/expiring",verifyToken,verifyRole.verifyEmployee,DocumentController.getExpiryAlerts);
