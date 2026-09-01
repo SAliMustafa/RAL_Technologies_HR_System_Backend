@@ -1,8 +1,8 @@
 const Holiday = require('../models/Holiday')
+const { logCreate, logUpdate } = require('../utils/auditLog')
 
 async function createHoliday(req, res) {
     try {
-
         const { date, description, is_confirmed } = req.body
 
         if (!date || !description) {
@@ -25,17 +25,14 @@ async function createHoliday(req, res) {
     }
     catch (err) {
         console.log(err)
-
         if (err.name === "ValidationError") {
             return res.status(400).json({ message: err.message })
         }
-
         if (err.code === 11000) {
             return res.status(409).json({
                 message: 'A holiday already exists on this date.'
             })
         }
-
         return res.status(500).json({ message: 'Internal Server Error' })
     }
 }
@@ -53,7 +50,6 @@ async function getHolidays(req, res) {
 
         const holidays = await Holiday.find(filter).sort({ date: 1 })
         return res.status(200).json(holidays)
-
     }
     catch (err) {
         console.log(err)
@@ -79,6 +75,11 @@ async function getHolidayById(req, res) {
 
 async function updateHoliday(req, res) {
     try {
+        const before = await Holiday.findById(req.params.id).lean()
+        if (!before) {
+            return res.status(404).json({ message: 'Holiday not found.' })
+        }
+
         const { date, description, is_confirmed } = req.body
 
         const holiday = await Holiday.findByIdAndUpdate(
@@ -86,10 +87,6 @@ async function updateHoliday(req, res) {
             { date, description, is_confirmed },
             { new: true, runValidators: true }
         )
-
-        if (!holiday) {
-            return res.status(404).json({ message: 'Holiday not found.' })
-        }
 
         logUpdate({
             tableName: "holiday",
@@ -99,6 +96,7 @@ async function updateHoliday(req, res) {
             after: { date, description, is_confirmed },
             ipAddress: req.ip
         })
+
         return res.status(200).json(holiday)
     }
     catch (err) {
