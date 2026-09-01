@@ -77,7 +77,7 @@ async function checkIn(req, res) {
 
         return res.status(201).json({
             message: " checkIn in successfully",
-            createAttendance,
+            attendance:createAttendance,
             checkIn
         });
 

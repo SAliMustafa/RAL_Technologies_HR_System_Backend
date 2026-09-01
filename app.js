@@ -18,8 +18,10 @@ const attendanceRoutes = require('./routes/attendance.routes')
 const attendanceCorrectionRoutes = require('./routes/attendanceCorrection.routes')
 const holidayRoutes = require('./routes/holiday.routes')
 
+const path = require("path");
 
 // Middleware
+
 app.use(
     cors({
         origin: (origin, callback) => {
@@ -44,7 +46,10 @@ app.use(
 app.use(express.json())
 app.use(morgan('dev'))
 
+app.use(
+  "/image",  express.static(path.join(__dirname, "image")));
 
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use('/auth',authRoutes)

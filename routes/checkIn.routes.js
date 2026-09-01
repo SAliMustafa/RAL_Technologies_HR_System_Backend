@@ -27,6 +27,7 @@ router.get(
   Checkin.getMyCheckins
 );
 
+// this useless
 // Get today's check-ins
 router.get(
   "/today",
