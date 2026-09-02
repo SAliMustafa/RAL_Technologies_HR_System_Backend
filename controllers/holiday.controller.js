@@ -68,10 +68,19 @@ async function updateHoliday(req, res) {
 
         const { from_date, to_date, description, is_confirmed } = req.body
 
+        const finalFromDate = new Date(from_date ?? before.from_date)
+        const finalToDate = new Date(to_date ?? before.to_date)
+
+        if (finalToDate < finalFromDate) {
+            return res.status(400).json({
+                message: 'to_date cannot be before from_date.'
+            })
+        }
+
         const holiday = await Holiday.findByIdAndUpdate(
             req.params.id,
             { from_date, to_date, description, is_confirmed },
-            { new: true, runValidators: true }
+            { new: true }
         )
 
         logUpdate({
