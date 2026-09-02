@@ -82,7 +82,7 @@ router.get(
 router.get(
   "/:userId",
   verifyToken,
-  verifyRole.verifyHrAdmin,
+  verifyRole.verifyHrAdminOrManager,
   getEmployeeById
 );
 
