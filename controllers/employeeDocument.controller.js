@@ -102,7 +102,7 @@ async function getMyDocuments(req, res) {
 // gets all employee documents; only for HR-Admin.
 async function getAllDocuments(req, res) {
   try {
-    const getAllDocument = await EmployeeDocument.find()
+    const getAllDocument = await EmployeeDocument.find().populate("employee_id")
     res.status(200).json(getAllDocument);
 
   } catch (error) {
@@ -116,7 +116,7 @@ async function getDocumentById(req, res) {
   try {
     const documentId = req.params.documentId
 
-    const findDocument = await EmployeeDocument.findById(documentId)
+    const findDocument = await EmployeeDocument.findById(documentId).populate("employee_id")
     res.status(200).json(findDocument);
 
   } catch (error) {
@@ -241,12 +241,181 @@ async function uploadDocumentByHrAdmain(req, res) {
   }
 }
 // lets HR-Admin update a specific employee document .
+// async function updateDocumentByHrAdmain(req, res) {
+//   try {
+
+//     const documentId = req.params.documentId
+
+//     const findDocument = await EmployeeDocument.findById(documentId)
+
+//     if (!findDocument) {
+//       return res.status(404).json({
+//         message: "Document not found"
+//       });
+//     }
+
+//     const uploaded_by = req.user._id
+//     const verified_by = req.user._id
+//     const file = req.file
+//     const {
+//       document_type,
+//       issue_date,
+//       expiry_date,
+//       is_active
+//     } = req.body;
+
+//     if (!document_type) {
+//       return res.status(400).json({ message: "Missing required fields" });
+//     }
+//     let activeValue = findDocument.is_active;
+
+//     if (is_active !== undefined) {
+
+//       if (
+//         is_active !== "true" &&
+//         is_active !== "false" &&
+//         is_active !== true &&
+//         is_active !== false
+//       ) {
+//         return res.status(400).json({
+//           message: "is_active must be true or false"
+//         });
+//       }
+
+//       activeValue =
+//         is_active === true ||
+//         is_active === "true";
+//     }
+
+
+
+
+//     const verified_on = new Date();
+
+
+//     const updateData = {
+//       document_type,
+
+//       issue_date:
+//         issue_date || null,
+
+//       expiry_date:
+//         expiry_date || null,
+
+//       is_active: activeValue,
+
+//       status: "verified",
+
+//       verified_by,
+
+//       verified_on
+//     };
+
+
+//     // only replace file if HR uploaded a new one
+//     if (file) {
+//       updateData.file = file.path;
+//     }
+
+
+//     const updatedDocument =
+//       await EmployeeDocument.findByIdAndUpdate(
+//         documentId,
+//         updateData,
+//         {
+//           new: true,
+//           runValidators: true
+//         }
+//       );
+
+//     await AuditLog.insertMany([
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "document_type",
+//         old_value: null,
+//         new_value: findDocument.document_type
+//         , ip_address: req.ip,
+//       },
+
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "issue_date",
+//         old_value: findDocument.issue_date || "",
+//         new_value: issue_date || ""
+//         , ip_address: req.ip,
+//       },
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "expiry_date",
+//         old_value: findDocument.expiry_date || "",
+//         new_value: expiry_date || ""
+//         , ip_address: req.ip,
+//       },
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "file",
+//         old_value: findDocument.file,
+//         new_value: file.path
+//         , ip_address: req.ip,
+//       },
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "status",
+//         old_value: findDocument.status,
+//         new_value: "verified"
+//         , ip_address: req.ip,
+//       },
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "verified_by",
+//         old_value: findDocument.verified_by,
+//         new_value: verified_by
+//         , ip_address: req.ip,
+//       },
+//       {
+//         table_name: "EmployeeDocument",
+//         record_id: uploadOneDocument._id.toString(),
+//         action: "update",
+//         changed_by: uploaded_by,
+//         field_name: "verified_on",
+//         old_value: findDocument.verified_on,
+//         new_value: new Date()
+//         , ip_address: req.ip,
+//       },
+
+
+//     ]);
+
+
+//     res.status(201).json(uploadOneDocument);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// }
 async function updateDocumentByHrAdmain(req, res) {
   try {
 
-    const documentId = req.params.documentId
+    const documentId = req.params.documentId;
 
-    const findDocument = await EmployeeDocument.findById(documentId)
+    const findDocument = await EmployeeDocument.findById(documentId);
 
     if (!findDocument) {
       return res.status(404).json({
@@ -254,114 +423,342 @@ async function updateDocumentByHrAdmain(req, res) {
       });
     }
 
-    const uploaded_by = req.user._id
-    const verified_by = req.user._id
-    const file = req.file
-    const { document_type, issue_date, expiry_date } = req.body;
 
-    if (!file || !document_type) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
+    const changed_by = req.user._id;
+    const verified_by = req.user._id;
+    const file = req.file;
 
-
-
-    const uploadOneDocument = await EmployeeDocument.findByIdAndUpdate(documentId, {
+    const {
       document_type,
       issue_date,
       expiry_date,
-      file: file.path,
-      uploaded_by,
+      is_active
+    } = req.body;
+
+
+    if (!document_type) {
+      return res.status(400).json({
+        message: "Document type is required"
+      });
+    }
+
+
+    // ============================
+    // Handle is_active
+    // ============================
+
+    let activeValue = findDocument.is_active;
+
+    if (is_active !== undefined) {
+
+      if (
+        is_active !== "true" &&
+        is_active !== "false" &&
+        is_active !== true &&
+        is_active !== false
+      ) {
+        return res.status(400).json({
+          message: "is_active must be true or false"
+        });
+      }
+
+      activeValue =
+        is_active === true ||
+        is_active === "true";
+    }
+
+
+    const verified_on = new Date();
+
+
+    // ============================
+    // Update Data
+    // ============================
+
+    const updateData = {
+
+      document_type,
+
+      issue_date:
+        issue_date || null,
+
+      expiry_date:
+        expiry_date || null,
+
+      is_active: activeValue,
+
       status: "verified",
+
       verified_by,
-      verified_on: new Date()
-    }, {
-      new: true,
-      runValidators: true
+
+      verified_on
+    };
+
+
+    // Replace file only if new file uploaded
+    if (file) {
+      updateData.file = file.path;
+    }
+
+
+    const updatedDocument =
+      await EmployeeDocument.findByIdAndUpdate(
+        documentId,
+        updateData,
+        {
+          new: true,
+          runValidators: true
+        }
+      );
+
+
+    // ============================
+    // AUDIT LOG
+    // ============================
+
+    const auditLogs = [];
+
+
+    // Document Type
+    if (
+      findDocument.document_type !==
+      updatedDocument.document_type
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "document_type",
+
+        old_value:
+          findDocument.document_type,
+
+        new_value:
+          updatedDocument.document_type,
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // Issue Date
+    if (
+      String(findDocument.issue_date || "") !==
+      String(updatedDocument.issue_date || "")
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "issue_date",
+
+        old_value:
+          findDocument.issue_date || "",
+
+        new_value:
+          updatedDocument.issue_date || "",
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // Expiry Date
+    if (
+      String(findDocument.expiry_date || "") !==
+      String(updatedDocument.expiry_date || "")
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "expiry_date",
+
+        old_value:
+          findDocument.expiry_date || "",
+
+        new_value:
+          updatedDocument.expiry_date || "",
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // Active / Inactive
+    if (
+      findDocument.is_active !==
+      updatedDocument.is_active
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "is_active",
+
+        old_value:
+          findDocument.is_active,
+
+        new_value:
+          updatedDocument.is_active,
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // File
+    if (
+      file &&
+      findDocument.file !== updatedDocument.file
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "file",
+
+        old_value:
+          findDocument.file,
+
+        new_value:
+          updatedDocument.file,
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // Status
+    if (
+      findDocument.status !==
+      updatedDocument.status
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "status",
+
+        old_value:
+          findDocument.status,
+
+        new_value:
+          updatedDocument.status,
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // Verified By
+    if (
+      String(findDocument.verified_by || "") !==
+      String(updatedDocument.verified_by || "")
+    ) {
+      auditLogs.push({
+        table_name: "EmployeeDocument",
+
+        record_id:
+          updatedDocument._id.toString(),
+
+        action: "update",
+
+        changed_by,
+
+        field_name: "verified_by",
+
+        old_value:
+          findDocument.verified_by || "",
+
+        new_value:
+          updatedDocument.verified_by || "",
+
+        ip_address: req.ip
+      });
+    }
+
+
+    // Verified On
+    auditLogs.push({
+      table_name: "EmployeeDocument",
+
+      record_id:
+        updatedDocument._id.toString(),
+
+      action: "update",
+
+      changed_by,
+
+      field_name: "verified_on",
+
+      old_value:
+        findDocument.verified_on || "",
+
+      new_value:
+        updatedDocument.verified_on,
+
+      ip_address: req.ip
     });
 
-    await AuditLog.insertMany([
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "document_type",
-        old_value: null,
-        new_value: findDocument.document_type
-        , ip_address: req.ip,
-      },
 
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "issue_date",
-        old_value: findDocument.issue_date || "",
-        new_value: issue_date || ""
-        , ip_address: req.ip,
-      },
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "expiry_date",
-        old_value: findDocument.expiry_date || "",
-        new_value: expiry_date || ""
-        , ip_address: req.ip,
-      },
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "file",
-        old_value: findDocument.file,
-        new_value: file.path
-        , ip_address: req.ip,
-      },
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "status",
-        old_value: findDocument.status,
-        new_value: "verified"
-        , ip_address: req.ip,
-      },
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "verified_by",
-        old_value: findDocument.verified_by,
-        new_value: verified_by
-        , ip_address: req.ip,
-      },
-      {
-        table_name: "EmployeeDocument",
-        record_id: uploadOneDocument._id.toString(),
-        action: "update",
-        changed_by: uploaded_by,
-        field_name: "verified_on",
-        old_value: findDocument.verified_on,
-        new_value: new Date()
-        , ip_address: req.ip,
-      },
+    // Save audit only if there are changes
+    if (auditLogs.length > 0) {
+      await AuditLog.insertMany(auditLogs);
+    }
 
 
-    ]);
+    return res.status(200).json({
+      message: "Document updated successfully",
+      document: updatedDocument
+    });
 
-
-    res.status(201).json(uploadOneDocument);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    console.log(err);
+
+    return res.status(500).json({
+      message: err.message
+    });
+
   }
 }
-
 
 // lets HR-Admin review a pending document and either verify it or reject it with a reason.
 async function reviewDocument(req, res) {
@@ -444,7 +841,7 @@ async function reviewDocument(req, res) {
 
       ip_address: req.ip
     });
-    
+
     return res.status(200).json({
       message:
         status === "verified"

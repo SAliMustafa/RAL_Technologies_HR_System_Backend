@@ -17,7 +17,7 @@ const checkInRoutes =require("./routes/checkIn.routes")
 const attendanceRoutes = require('./routes/attendance.routes')
 const attendanceCorrectionRoutes = require('./routes/attendanceCorrection.routes')
 const holidayRoutes = require('./routes/holiday.routes')
-
+const AuditLogRoutes=require("./routes/auditLog.routes")
 const path = require("path");
 
 // Middleware
@@ -63,6 +63,7 @@ app.use('/checkIn', checkInRoutes)
 app.use('/attendance', attendanceRoutes)
 app.use('/attendance-corrections', attendanceCorrectionRoutes)
 app.use('/holidays', holidayRoutes)
+app.use('/audit-logs', AuditLogRoutes)
 
 
 

@@ -27,7 +27,7 @@ router.put( "/hr/:documentId",verifyToken,upload.single("file"),verifyRole.verif
 
 router.put("/:documentId/review",verifyToken,verifyRole.verifyHrAdmin,DocumentController.reviewDocument);
 
-router.put("/delete",verifyToken,verifyRole.verifyHrAdmin,DocumentController.deleteDocument);
+router.put("/delete/:documentId",verifyToken,verifyRole.verifyHrAdmin,DocumentController.deleteDocument);
 
 
 // route SHARED 
