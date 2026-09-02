@@ -22,6 +22,7 @@ const attendanceSchema = new mongoose.Schema(
         "on_leave",
         "holiday",
         "weekly_off",
+        "pending"
       ],
     },
 

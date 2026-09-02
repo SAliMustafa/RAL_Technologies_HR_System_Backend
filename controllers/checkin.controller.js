@@ -62,9 +62,8 @@ async function checkIn(req, res) {
             date: attendanceDate,
             in_time,
             is_late_entry,
-            is_incomplete: true
-
-
+            is_incomplete: true,
+            status: "pending"
         })
 
         const checkIn = await Checkin.create({
