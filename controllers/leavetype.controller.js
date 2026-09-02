@@ -294,12 +294,45 @@ async function deactivateLeaveType(req,res){
     }
 }
 
+async function activateLeaveType(req,res){
+    try{
+        const {id} = req.params
+        const existingLeaveType = await LeaveType.findById(id)
+        if(!existingLeaveType){
+            return res.status(404).json({success: false, message: "Leave type not found."})
+        }
+        if(existingLeaveType.is_active){
+            return res.status(400).json({success: false, message: "Leave type is already active."})
+        }
+        const leaveType = await LeaveType.findByIdAndUpdate(id, {is_active: true}, {new: true, runValidators: true} )
 
+        if (!leaveType) {
+            return res.status(404).json({ success: false, message: "Leave type not found." });
+        }
+
+        await AuditLog.create({
+            table_name: 'LeaveType',
+            record_id: leaveType._id.toString(),
+            action: 'update',
+            changed_by: req.user._id,
+            field_name: 'is_active',
+            old_value: existingLeaveType.is_active.toString(),
+            new_value: leaveType.is_active.toString(),
+            reason: 'Leave type activated by HR',
+            ip_address: req.ip
+        })
+
+        return res.status(200).json(leaveType)
+    }catch(err){
+        return handleError(res, err)
+    }
+}
 
 module.exports = {
     createLeaveType,
     getAllLeaveTypes,
     getLeaveTypeById,
     updateLeaveType,
-    deactivateLeaveType
+    deactivateLeaveType,
+    activateLeaveType
 }

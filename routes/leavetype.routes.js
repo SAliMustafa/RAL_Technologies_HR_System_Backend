@@ -2,7 +2,7 @@ const router = require("express").Router()
 const verifyToken = require('../middleware/verifyToken')
 const validateObjectId = require('../middleware/validateObjectId')
 const {verifyHrAdmin} = require('../middleware/verifyRole')
-const {createLeaveType, getAllLeaveTypes, getLeaveTypeById, updateLeaveType, deactivateLeaveType} = require('../controllers/leavetype.controller')
+const {createLeaveType, getAllLeaveTypes, getLeaveTypeById, updateLeaveType, deactivateLeaveType, activateLeaveType} = require('../controllers/leavetype.controller')
 
 router.post("/", verifyToken, verifyHrAdmin, createLeaveType)
 
@@ -13,5 +13,7 @@ router.get("/:id", verifyToken, validateObjectId, getLeaveTypeById)
 router.put("/:id", verifyToken, verifyHrAdmin, validateObjectId, updateLeaveType) 
 
 router.delete("/:id", verifyToken, verifyHrAdmin, validateObjectId, deactivateLeaveType)
+
+router.patch("/:id", verifyToken, verifyHrAdmin, validateObjectId, activateLeaveType)
 
 module.exports = router
