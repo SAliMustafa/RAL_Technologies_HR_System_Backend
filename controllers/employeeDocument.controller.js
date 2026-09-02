@@ -1,5 +1,6 @@
 const EmployeeDocument = require("../models/EmployeeDocument")
 const Employee = require("../models/Employee")
+const User = require("../models/User")
 const AuditLog = require("../models/AuditLog")
 
 // lets an employee upload their own document.
@@ -89,7 +90,11 @@ async function updateDocumentByEmployee(req, res) {
 // gets all documents that belong to the logged-in employee.
 async function getMyDocuments(req, res) {
   try {
-    const employee_id = req.user._id
+    const user = await User.findById(req.user._id).select("employeeId")
+    const employee_id = user?.employeeId
+    if (!employee_id) {
+      return res.status(400).json({ message: "User is not linked to an employee record." })
+    }
     const getMyDocument = await EmployeeDocument.find({ employee_id })
     res.status(200).json(getMyDocument);
 
@@ -860,7 +865,11 @@ async function reviewDocument(req, res) {
 // checks the logged-in employee’s verified documents and returns alerts for documents close to expiry.
 async function getExpiryAlerts(req, res) {
   try {
-    const employee_id = req.user._id;
+    const user = await User.findById(req.user._id).select("employeeId")
+    const employee_id = user?.employeeId
+    if (!employee_id) {
+      return res.status(400).json({ message: "User is not linked to an employee record." })
+    }
 
     const documents = await EmployeeDocument.find({
       employee_id,
