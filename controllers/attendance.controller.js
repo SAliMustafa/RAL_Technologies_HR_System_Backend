@@ -8,27 +8,29 @@ const mongoose = require("mongoose");
 async function getAttendanceById(req, res) {
     try {
         const attendance = await Attendance.findById(req.params.id)
+            .populate("employee_id", "employee_code name_en name_ar department_id job_title")
+            .populate("corrected_by", "username")
 
         if (!attendance) {
             return res.status(404).json({ message: 'Attendance record not found.' })
         }
 
         const user = await User.findById(req.user._id)
-        if (user.role === "employee" && String(attendance.employee_id) !== String(user.employee_id)) {
+        if (user.role === "employee" && String(attendance.employee_id._id) !== String(user.employeeId)) {
             return res.status(403).json({ message: 'This is not within your authority.' });
         }
 
         if (user.role === 'manager') {
             const managed = await Employee.exists({
-                _id: attendance.employee_id,
-                reports_to: user.employee_id
+                _id: attendance.employee_id._id,
+                reports_to: user.employeeId
             })
 
             if (!managed) {
                 return res.status(403).json({ message: 'This is not within your authority.' })
             }
         }
-        res.status(200).json(attendance)
+        return res.status(200).json(attendance)
     }
     catch (err) {
         console.log(err)
@@ -153,7 +155,7 @@ async function getMyAttendance(req, res) {
 
     const user = await User.findById(userId);
 
-    const attendance = await Attendance.find({employee_id: user.employeeId}).sort({ date: -1 });
+    const attendance = await Attendance.find({ employee_id: user.employeeId }).sort({ date: -1 });
 
     return res.status(200).json(attendance);
 
@@ -204,7 +206,7 @@ async function getTeamAttendance(req, res) {
 
     const user = await User.findById(userId);
 
-   
+
 
     const managerEmployeeId = user.employeeId;
 
@@ -304,8 +306,7 @@ async function getEmployeeAttendance(req, res) {
 
 async function getAllAttendance(req, res) {
   try {
-
-    const {status,employee_id,date} = req.query;
+    const { status, employee_id, date } = req.query;
 
     const filter = {};
 
@@ -313,14 +314,13 @@ async function getAllAttendance(req, res) {
       filter.status = status;
     }
 
-    if (employee_id) {
+    if (employee_id && mongoose.Types.ObjectId.isValid(employee_id)) {
       filter.employee_id = employee_id;
     }
 
     if (date) {
       const attendanceDate = new Date(date);
       attendanceDate.setHours(0, 0, 0, 0);
-
       filter.date = attendanceDate;
     }
 
@@ -332,8 +332,8 @@ async function getAllAttendance(req, res) {
       .sort({ date: -1 });
 
     return res.status(200).json(attendance);
-
-  } catch (error) {
+  }
+  catch (error) {
     console.log(error);
 
     return res.status(500).json({
@@ -399,14 +399,14 @@ async function lockAttendance(req, res) {
 
 
 module.exports = {
-    lockAttendance,
-    getMyAttendance,
-    getTodayAttendance,
-    getAttendanceById,
-    getEmployeeAttendance,
-    getAllAttendance,
-    updateAttendance,
-    getTodayAllAttendance,
-    getTeamAttendance
+  lockAttendance,
+  getMyAttendance,
+  getTodayAttendance,
+  getAttendanceById,
+  getEmployeeAttendance,
+  getAllAttendance,
+  updateAttendance,
+  getTodayAllAttendance,
+  getTeamAttendance
 
 }

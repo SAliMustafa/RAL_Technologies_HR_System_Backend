@@ -13,6 +13,14 @@ router.get(
   attendanceController.getMyAttendance
 );
 
+//Get my attendance by ID
+router.get(
+  "/:id",
+  verifyToken,
+  validateObjectId,
+  attendanceController.getAttendanceById
+);
+
 // Get my attendance for today
 router.get(
   "/my-attendance/today",
@@ -60,7 +68,7 @@ router.get(
 
 // Update / correct attendance
 router.put(
-  "/:attendanceId",
+  "/:id",
   verifyToken,
   verifyRole.verifyHrAdmin,
   attendanceController.updateAttendance
