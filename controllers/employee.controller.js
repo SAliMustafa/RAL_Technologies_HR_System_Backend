@@ -492,7 +492,7 @@ async function getTeamEmployees(req, res) {
      
     const user = await User.findById(userId).populate('employeeId')
     
-    const findteam= await Employee.find({reports_to: userId})
+    const findteam= await Employee.find({reports_to: user.employeeId._id})
 
     res.status(200).json(findteam);
 
