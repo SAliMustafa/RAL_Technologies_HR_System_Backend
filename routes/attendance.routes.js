@@ -31,6 +31,14 @@ router.get(
   attendanceController.getTeamAttendance
 );
 
+//Get my attendance by ID
+router.get(
+  "/:id",
+  verifyToken,
+  validateObjectId,
+  attendanceController.getAttendanceById
+);
+
 
 // ================= HR ADMIN =================
 
@@ -60,7 +68,7 @@ router.get(
 
 // Update / correct attendance
 router.put(
-  "/:attendanceId",
+  "/:id",
   verifyToken,
   verifyRole.verifyHrAdmin,
   attendanceController.updateAttendance
