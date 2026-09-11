@@ -78,7 +78,7 @@ router.put(
 router.get(
   "/:attendanceId",
   verifyToken,
-  verifyRole.verifyHrAdmin,
+  // verifyRole.verifyHrAdmin,
   attendanceController.getAttendanceById
 );
 module.exports = router
