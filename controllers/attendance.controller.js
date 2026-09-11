@@ -7,22 +7,31 @@ const mongoose = require("mongoose");
 
 async function getAttendanceById(req, res) {
     try {
-        const attendance = await Attendance.findById(req.params.id)
-            .populate("employee_id", "employee_code name_en name_ar department_id job_title")
-            .populate("corrected_by", "username")
+        const { attendanceId } = req.params
+
+        if (!mongoose.Types.ObjectId.isValid(attendanceId)) {
+            return res.status(400).json({ message: 'Invalid attendance record id.' })
+        }
+
+        const attendance = await Attendance.findById(attendanceId)
 
         if (!attendance) {
             return res.status(404).json({ message: 'Attendance record not found.' })
         }
 
         const user = await User.findById(req.user._id)
-        if (user.role === "employee" && String(attendance.employee_id._id) !== String(user.employeeId)) {
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' })
+        }
+
+        if (user.role === "employee" && String(attendance.employee_id) !== String(user.employeeId)) {
             return res.status(403).json({ message: 'This is not within your authority.' });
         }
 
         if (user.role === 'manager') {
-            const managed = await Employee.exists({
-                _id: attendance.employee_id._id,
+            const isOwnRecord = String(attendance.employee_id) === String(user.employeeId)
+            const managed = isOwnRecord || await Employee.exists({
+                _id: attendance.employee_id,
                 reports_to: user.employeeId
             })
 

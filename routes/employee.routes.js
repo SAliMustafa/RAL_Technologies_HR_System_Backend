@@ -32,7 +32,7 @@ router.put(
 );
 
 // Update only employee status
-router.put(
+router.patch(
   "/:userId/status",
   verifyToken,
   verifyRole.verifyHrAdmin,

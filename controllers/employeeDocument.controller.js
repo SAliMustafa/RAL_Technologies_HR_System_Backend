@@ -1,12 +1,37 @@
 const EmployeeDocument = require("../models/EmployeeDocument")
 const Employee = require("../models/Employee")
+const User = require("../models/User")
 const AuditLog = require("../models/AuditLog")
+
+async function getLinkedEmployeeId(userId) {
+  const user = await User.findById(userId).select("employeeId")
+  return user?.employeeId || null
+}
+
+// Older employee uploads stored a User ID in employee_id. Resolve both the
+// legacy User ID and the correct Employee ID when returning documents to HR.
+async function resolveDocumentEmployee(document) {
+  const result = document.toObject()
+  let employee = await Employee.findById(document.employee_id)
+
+  if (!employee) {
+    const legacyUser = await User.findById(document.employee_id).populate("employeeId")
+    employee = legacyUser?.employeeId || null
+  }
+
+  result.employee_id = employee
+  return result
+}
 
 // lets an employee upload their own document.
 async function uploadDocumentByEmployee(req, res) {
   try {
-    const employee_id = req.user._id
+    const employee_id = await getLinkedEmployeeId(req.user._id)
     const uploaded_by = req.user._id
+
+    if (!employee_id) {
+      return res.status(400).json({ message: "User is not linked to an employee record" });
+    }
 
     const file = req.file
 
@@ -36,9 +61,13 @@ async function updateDocumentByEmployee(req, res) {
 
   try {
 
-    const employee_id = req.user._id
+    const employee_id = await getLinkedEmployeeId(req.user._id)
     const documentId = req.params.documentId
     const uploaded_by = req.user._id;
+
+    if (!employee_id) {
+      return res.status(400).json({ message: "User is not linked to an employee record" });
+    }
 
     const findDocument = await EmployeeDocument.findById(documentId)
 
@@ -48,8 +77,11 @@ async function updateDocumentByEmployee(req, res) {
       });
     }
 
-    if (String(employee_id) != String(findDocument.employee_id)) {
-      return res.status().json({ message: "Not allowed" });
+    const ownsDocument = [employee_id, req.user._id].some(
+      id => String(id) === String(findDocument.employee_id)
+    )
+    if (!ownsDocument) {
+      return res.status(403).json({ message: "Not allowed" });
     }
 
     const file = req.file
@@ -63,6 +95,7 @@ async function updateDocumentByEmployee(req, res) {
 
 
     const updateDocument = await EmployeeDocument.findByIdAndUpdate(documentId, {
+      employee_id,
       document_type,
       issue_date,
       expiry_date,
@@ -89,8 +122,13 @@ async function updateDocumentByEmployee(req, res) {
 // gets all documents that belong to the logged-in employee.
 async function getMyDocuments(req, res) {
   try {
-    const employee_id = req.user._id
-    const getMyDocument = await EmployeeDocument.find({ employee_id })
+    const employee_id = await getLinkedEmployeeId(req.user._id)
+    if (!employee_id) {
+      return res.status(400).json({ message: "User is not linked to an employee record" });
+    }
+    const getMyDocument = await EmployeeDocument.find({
+      employee_id: { $in: [employee_id, req.user._id] }
+    })
     res.status(200).json(getMyDocument);
 
   } catch (error) {
@@ -102,7 +140,8 @@ async function getMyDocuments(req, res) {
 // gets all employee documents; only for HR-Admin.
 async function getAllDocuments(req, res) {
   try {
-    const getAllDocument = await EmployeeDocument.find().populate("employee_id")
+    const documents = await EmployeeDocument.find()
+    const getAllDocument = await Promise.all(documents.map(resolveDocumentEmployee))
     res.status(200).json(getAllDocument);
 
   } catch (error) {
@@ -116,8 +155,11 @@ async function getDocumentById(req, res) {
   try {
     const documentId = req.params.documentId
 
-    const findDocument = await EmployeeDocument.findById(documentId).populate("employee_id")
-    res.status(200).json(findDocument);
+    const findDocument = await EmployeeDocument.findById(documentId)
+    if (!findDocument) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+    res.status(200).json(await resolveDocumentEmployee(findDocument));
 
   } catch (error) {
     res.status(500).json({ message: err.message });
@@ -860,10 +902,13 @@ async function reviewDocument(req, res) {
 // checks the logged-in employee’s verified documents and returns alerts for documents close to expiry.
 async function getExpiryAlerts(req, res) {
   try {
-    const employee_id = req.user._id;
+    const employee_id = await getLinkedEmployeeId(req.user._id);
+    if (!employee_id) {
+      return res.status(400).json({ message: "User is not linked to an employee record" });
+    }
 
     const documents = await EmployeeDocument.find({
-      employee_id,
+      employee_id: { $in: [employee_id, req.user._id] },
       // status: "verified",
       expiry_date: { $ne: null }
     });
